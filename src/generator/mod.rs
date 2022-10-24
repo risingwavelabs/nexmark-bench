@@ -3,6 +3,8 @@ use arcstr::ArcStr;
 use cached::SizedCache;
 use rand::Rng;
 
+use crate::NexmarkSource;
+
 use self::{
     config::GeneratorConfig,
     events::{bids::CHANNELS_NUMBER, Event},
@@ -24,19 +26,26 @@ pub struct NexmarkGenerator<R: Rng> {
     bid_channel_cache: SizedCache<u32, (ArcStr, ArcStr)>,
     events_counts_so_far: u64,
     wallclock_base_time: u64,
+    pub nexmark_source: NexmarkSource,
 }
 
 impl<R> NexmarkGenerator<R>
 where
     R: Rng,
 {
-    pub fn new(config: GeneratorConfig, rng: R, wallclock_base_time: u64) -> Self {
+    pub fn new(
+        config: GeneratorConfig,
+        rng: R,
+        wallclock_base_time: u64,
+        nexmark_source: NexmarkSource,
+    ) -> Self {
         Self {
             config,
             rng,
             bid_channel_cache: SizedCache::with_size(CHANNELS_NUMBER as usize),
             events_counts_so_far: 0,
             wallclock_base_time,
+            nexmark_source,
         }
     }
 
