@@ -39,8 +39,6 @@ impl<R: Rng> NexmarkGenerator<R> {
         let description = self.next_string(100);
         let reserve = initial_bid + self.next_price();
 
-        // Not sure why original Java implementation doesn't include date_time, but
-        // following the same.
         let current_size = size_of::<u64>()
             + size_of_val(item_name.as_str())
             + size_of_val(description.as_str())

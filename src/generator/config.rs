@@ -1,9 +1,10 @@
-use super::super::Config as NexmarkConfig;
+use super::super::NexmarkConfig;
 
 pub const FIRST_PERSON_ID: usize = 1000;
 pub const FIRST_AUCTION_ID: usize = 1000;
 pub const FIRST_CATEGORY_ID: usize = 10;
 
+#[derive(Debug, Clone)]
 pub struct GeneratorConfig {
     pub nexmark_config: NexmarkConfig,
     pub base_time: u64,

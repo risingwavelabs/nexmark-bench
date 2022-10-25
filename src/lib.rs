@@ -1,10 +1,14 @@
 use clap::Parser;
-
-// Number of yet-to-be-created people and auction ids allowed.
-pub const PERSON_ID_LEAD: usize = 10;
+use generator::NexmarkGenerator;
+use generator::{config::GeneratorConfig, source::NexmarkSource};
+use rand::Rng;
+use std::time::{Duration, SystemTime};
+use tokio::time;
+pub mod generator;
+pub mod producer;
 
 #[derive(Clone, Debug, Parser)]
-pub struct Config {
+pub struct NexmarkConfig {
     #[clap(long, default_value = "1")]
     pub person_proportion: usize,
 
@@ -14,13 +18,13 @@ pub struct Config {
     #[clap(long, default_value = "3")]
     pub auction_proportion: usize,
 
-    #[clap(long, default_value = "500")]
+    #[clap(long, default_value = "0")]
     pub avg_auction_byte_size: usize,
 
-    #[clap(long, default_value = "100")]
+    #[clap(long, default_value = "0")]
     pub avg_bid_byte_size: usize,
 
-    #[clap(long, default_value = "200")]
+    #[clap(long, default_value = "0")]
     pub avg_person_byte_size: usize,
 
     /// #[clap(long, default_value = "10000000")]
@@ -42,7 +46,7 @@ pub struct Config {
     pub max_events: u64,
 
     /// Number of event generators
-    #[clap(long, default_value = "2")]
+    #[clap(long, default_value = "3")]
     pub num_event_generators: usize,
 
     #[clap(long, default_value = "10000")]
@@ -56,8 +60,82 @@ pub struct Config {
     pub num_in_flight_auctions: usize,
 }
 
-impl Config {
+impl Default for NexmarkConfig {
+    fn default() -> Self {
+        NexmarkConfig {
+            auction_proportion: 3,
+            avg_auction_byte_size: 0,
+            avg_bid_byte_size: 0,
+            avg_person_byte_size: 0,
+            bid_proportion: 46,
+            first_event_rate: 100_000,
+            hot_auction_ratio: 2,
+            hot_bidders_ratio: 4,
+            hot_sellers_ratio: 4,
+            max_events: 1000,
+            num_active_people: 1000,
+            num_event_generators: 3,
+            num_in_flight_auctions: 100,
+            person_proportion: 1,
+            source_buffer_size: 10_000,
+        }
+    }
+}
+
+impl NexmarkConfig {
     pub fn total_proportion(&self) -> usize {
         self.person_proportion + self.auction_proportion + self.bid_proportion
+    }
+}
+
+/// Creates generators from config options and sends events directly to kafka
+pub async fn create_generators_for_config<T>(nexmark_config: &NexmarkConfig)
+where
+    T: Rng + Default + std::marker::Send,
+{
+    let wallclock_base_time = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    let mut v = Vec::<tokio::task::JoinHandle<()>>::new();
+    for generator_num in 0..nexmark_config.num_event_generators {
+        let generator_config = GeneratorConfig::new(
+            nexmark_config.clone(),
+            wallclock_base_time,
+            0,
+            generator_num,
+        );
+        let jh = tokio::spawn(async move {
+            let delay = generator_config.inter_event_delay_microseconds;
+            let mut interval = time::interval(Duration::from_micros(
+                delay as u64 * generator_config.nexmark_config.num_event_generators as u64,
+            ));
+            let mut generator =
+                NexmarkGenerator::new(generator_config.clone(), T::default(), NexmarkSource::new());
+            loop {
+                interval.tick().await;
+                let next_event = generator.next_event();
+                match &next_event {
+                    Ok(e) => match e {
+                        Some(next_e) => {
+                            if let Err(err) = generator
+                                .nexmark_source
+                                .producer
+                                .send_data_to_topic(&next_e, &(generator_num as i32))
+                            {
+                                eprintln!("Error in sending event {:?}: {}", &next_e, &err);
+                                continue;
+                            }
+                        }
+                        None => break,
+                    },
+                    Err(err) => eprintln!("Error in generating event {:?}: {}", &next_event, &err),
+                };
+            }
+        });
+        v.push(jh);
+    }
+    for jh in v.into_iter() {
+        jh.await.unwrap();
     }
 }
