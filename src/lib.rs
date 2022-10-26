@@ -101,6 +101,7 @@ where
     let nexmark_source = Arc::new(NexmarkSource::new(nexmark_config));
     nexmark_source.create_topic().await;
     let mut v = Vec::<tokio::task::JoinHandle<()>>::new();
+    let start_time = SystemTime::now();
     for generator_num in 0..nexmark_config.num_event_generators {
         let generator_config = GeneratorConfig::new(
             nexmark_config.clone(),
@@ -136,6 +137,16 @@ where
                     Err(err) => eprintln!("Error in generating event {:?}: {}", &next_event, &err),
                 };
             }
+            generator
+                .nexmark_source
+                .get_producer_for_generator(generator_num)
+                .producer
+                .flush(time::Duration::new(5, 0));
+            println!(
+                "Delivered {} events in {:?}",
+                generator.events_counts_so_far,
+                SystemTime::elapsed(&start_time).unwrap()
+            );
         });
         v.push(jh);
     }
