@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use self::{
     config::GeneratorConfig,
     events::{bids::CHANNELS_NUMBER, Event},
     source::NexmarkSource,
 };
+
 use anyhow::Result;
 use arcstr::ArcStr;
 use cached::SizedCache;
@@ -17,20 +20,20 @@ pub struct NexmarkGenerator<R: Rng> {
     rng: R,
     bid_channel_cache: SizedCache<u32, (ArcStr, ArcStr)>,
     pub events_counts_so_far: u64,
-    pub nexmark_source: NexmarkSource,
+    pub nexmark_source: Arc<NexmarkSource>,
 }
 
-impl<R> NexmarkGenerator<R>
+impl<'a, R> NexmarkGenerator<R>
 where
     R: Rng,
 {
-    pub fn new(config: GeneratorConfig, rng: R, nexmark_source: NexmarkSource) -> Self {
+    pub fn new(config: GeneratorConfig, rng: R, nexmark_source: Arc<NexmarkSource>) -> Self {
         Self {
             config,
             rng,
             bid_channel_cache: SizedCache::with_size(CHANNELS_NUMBER as usize),
             events_counts_so_far: 0,
-            nexmark_source,
+            nexmark_source: nexmark_source,
         }
     }
 

@@ -68,17 +68,17 @@ services:
       kafka1:
         condition: service_healthy
 
-  init-kafka:
-    image: confluentinc/cp-kafka:7.2.1
-    depends_on:
-      kafka1:
-        condition: service_healthy
-    entrypoint: [ '/bin/sh', '-c' ]
-    command: |
-      "
-      echo -e 'Creating kafka topics'
-      kafka-topics --bootstrap-server kafka1:19092 --create --if-not-exists --topic ${KAFKA_TOPIC:?err} --replication-factor 1 --partitions 1
+  # init-kafka:
+  #   image: confluentinc/cp-kafka:7.2.1
+  #   depends_on:
+  #     kafka1:
+  #       condition: service_healthy
+  #   entrypoint: [ '/bin/sh', '-c' ]
+  #   command: |
+  #     "
+  #     echo -e 'Creating kafka topics'
+  #     kafka-topics --bootstrap-server kafka1:19092 --create --if-not-exists --topic ${KAFKA_TOPIC:?err} --replication-factor 1 --partitions 1
 
-      echo -e 'Successfully created the following topics:'
-      kafka-topics --bootstrap-server kafka1:19092 --list
-      "
+  #     echo -e 'Successfully created the following topics:'
+  #     kafka-topics --bootstrap-server kafka1:19092 --list
+  #     "

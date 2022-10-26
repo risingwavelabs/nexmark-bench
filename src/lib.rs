@@ -2,6 +2,7 @@ use clap::Parser;
 use generator::NexmarkGenerator;
 use generator::{config::GeneratorConfig, source::NexmarkSource};
 use rand::Rng;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::time;
 pub mod generator;
@@ -97,6 +98,8 @@ where
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_millis() as u64;
+    let nexmark_source = Arc::new(NexmarkSource::new(nexmark_config));
+    nexmark_source.create_topic().await;
     let mut v = Vec::<tokio::task::JoinHandle<()>>::new();
     for generator_num in 0..nexmark_config.num_event_generators {
         let generator_config = GeneratorConfig::new(
@@ -105,13 +108,14 @@ where
             0,
             generator_num,
         );
+        let source = Arc::clone(&nexmark_source);
         let jh = tokio::spawn(async move {
             let delay = generator_config.inter_event_delay_microseconds;
             let mut interval = time::interval(Duration::from_micros(
                 delay as u64 * generator_config.nexmark_config.num_event_generators as u64,
             ));
             let mut generator =
-                NexmarkGenerator::new(generator_config.clone(), T::default(), NexmarkSource::new());
+                NexmarkGenerator::new(generator_config.clone(), T::default(), source);
             loop {
                 interval.tick().await;
                 let next_event = generator.next_event();
@@ -120,8 +124,8 @@ where
                         Some(next_e) => {
                             if let Err(err) = generator
                                 .nexmark_source
-                                .producer
-                                .send_data_to_topic(&next_e, &(generator_num as i32))
+                                .get_producer_for_generator(generator_num)
+                                .send_data_to_topic(&next_e)
                             {
                                 eprintln!("Error in sending event {:?}: {}", &next_e, &err);
                                 continue;
