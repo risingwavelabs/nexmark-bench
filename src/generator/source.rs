@@ -6,7 +6,6 @@ use rdkafka::{
     config::FromClientConfig,
     ClientConfig, ClientContext,
 };
-
 use serde::Deserialize;
 
 use crate::{producer::KafkaProducer, NexmarkConfig};
@@ -20,12 +19,15 @@ pub struct NexmarkSource {
     env_config: Arc<EnvConfig>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct EnvConfig {
     host: String,
     pub num_partitions: i32,
     pub separate_topics: bool,
     pub base_topic: String,
+    pub auction_topic: String,
+    pub bid_topic: String,
+    pub person_topic: String,
 }
 
 impl NexmarkSource {
@@ -37,9 +39,9 @@ impl NexmarkSource {
             .map(|i| KafkaProducer::new(&client_config, Arc::clone(&env_config), i))
             .collect();
         Self {
-            producers: producers,
+            producers,
             client_config: client_config.to_owned(),
-            env_config: env_config,
+            env_config,
         }
     }
 
@@ -69,9 +71,9 @@ impl NexmarkSource {
         admin_client
             .delete_topics(
                 &vec![
-                    format!("{}-person", self.env_config.base_topic).as_str(),
-                    format!("{}-auction", self.env_config.base_topic).as_str(),
-                    format!("{}-bid", self.env_config.base_topic).as_str(),
+                    self.env_config.person_topic.as_str(),
+                    self.env_config.auction_topic.as_str(),
+                    self.env_config.bid_topic.as_str(),
                     self.env_config.base_topic.as_str(),
                 ],
                 &AdminOptions::new(),
@@ -90,17 +92,17 @@ impl NexmarkSource {
                 .create_topics(
                     vec![
                         &NewTopic::new(
-                            format!("{}-person", self.env_config.base_topic).as_str(),
+                            &self.env_config.person_topic,
                             self.env_config.num_partitions,
                             rdkafka::admin::TopicReplication::Fixed(REPLICATION_FACTOR),
                         ),
                         &NewTopic::new(
-                            format!("{}-auction", self.env_config.base_topic).as_str(),
+                            &self.env_config.auction_topic,
                             self.env_config.num_partitions,
                             rdkafka::admin::TopicReplication::Fixed(REPLICATION_FACTOR),
                         ),
                         &NewTopic::new(
-                            format!("{}-bid", self.env_config.base_topic).as_str(),
+                            &self.env_config.bid_topic,
                             self.env_config.num_partitions,
                             rdkafka::admin::TopicReplication::Fixed(REPLICATION_FACTOR),
                         ),
@@ -112,7 +114,7 @@ impl NexmarkSource {
             false => admin_client
                 .create_topics(
                     vec![&NewTopic::new(
-                        self.env_config.base_topic.as_str(),
+                        &self.env_config.base_topic,
                         self.env_config.num_partitions,
                         rdkafka::admin::TopicReplication::Fixed(REPLICATION_FACTOR),
                     )],

@@ -23,7 +23,7 @@ pub struct NexmarkGenerator<R: Rng> {
     pub nexmark_source: Arc<NexmarkSource>,
 }
 
-impl<R> NexmarkGenerator<R>
+impl<R: Rng> NexmarkGenerator<R>
 where
     R: Rng,
 {

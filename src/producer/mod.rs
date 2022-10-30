@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::generator::{events::Event, source::EnvConfig};
+use crate::producer::Event::{Auction, Bid, Person};
 use anyhow::Result;
 use rdkafka::{
     producer::{BaseRecord, ProducerContext, ThreadedProducer},
@@ -13,7 +14,7 @@ pub struct KafkaProducer {
     generator_num: usize,
 }
 
-impl<'a> KafkaProducer {
+impl KafkaProducer {
     pub fn new(
         client_config: &ClientConfig,
         env_config: Arc<EnvConfig>,
@@ -30,21 +31,30 @@ impl<'a> KafkaProducer {
     }
 
     pub fn send_data_to_topic(&self, data: &Event) -> Result<()> {
-        let data = serde_json::to_string(data)?;
+        let payload = serde_json::to_string(data)?;
         self.producer
             .send(
-                BaseRecord::<std::string::String, std::string::String>::to(
-                    &self.env_config.base_topic,
-                )
-                .key(&format!("event-{}", &self.generator_num))
-                .partition(self.choose_partition())
-                .payload(&data),
+                BaseRecord::<std::string::String, std::string::String>::to(self.choose_topic(data))
+                    .key(&format!("event-{}", &self.generator_num))
+                    .partition(self.choose_partition())
+                    .payload(&payload),
             )
             .map_err(|e| anyhow::Error::new(e.0))
     }
 
     fn choose_partition(&self) -> i32 {
         self.generator_num as i32 % self.env_config.num_partitions as i32
+    }
+
+    fn choose_topic(&self, data: &Event) -> &str {
+        match self.env_config.separate_topics {
+            false => &self.env_config.base_topic,
+            true => match *data {
+                Person(_) => &self.env_config.person_topic,
+                Auction(_) => &self.env_config.auction_topic,
+                Bid(_) => &self.env_config.bid_topic,
+            },
+        }
     }
 }
 
