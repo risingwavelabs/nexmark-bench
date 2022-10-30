@@ -6,7 +6,7 @@ pub mod strings;
 use arcstr::ArcStr;
 use serde::Serialize;
 
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Default)]
 pub struct Person {
     pub id: u64,
     pub name: ArcStr,

@@ -1,4 +1,6 @@
-use crate::generator::events::Event;
+use std::sync::Arc;
+
+use crate::generator::{events::Event, source::EnvConfig};
 use anyhow::Result;
 use rdkafka::{
     producer::{BaseRecord, ProducerContext, ThreadedProducer},
@@ -7,19 +9,23 @@ use rdkafka::{
 
 pub struct KafkaProducer {
     pub producer: ThreadedProducer<ProduceCallbackLogger>,
-    topic: String,
-    partition_num: usize,
+    env_config: Arc<EnvConfig>,
+    generator_num: usize,
 }
 
-impl KafkaProducer {
-    pub fn new(client_config: ClientConfig, topic: String, partition_num: usize) -> Self {
+impl<'a> KafkaProducer {
+    pub fn new(
+        client_config: &ClientConfig,
+        env_config: Arc<EnvConfig>,
+        generator_num: usize,
+    ) -> Self {
         let producer: ThreadedProducer<ProduceCallbackLogger> = client_config
             .create_with_context(ProduceCallbackLogger {})
             .expect("Failed to create kafka producer");
         Self {
             producer,
-            topic,
-            partition_num,
+            env_config,
+            generator_num,
         }
     }
 
@@ -27,12 +33,18 @@ impl KafkaProducer {
         let data = serde_json::to_string(data)?;
         self.producer
             .send(
-                BaseRecord::<std::string::String, std::string::String>::to(&self.topic)
-                    .key(&format!("event-{}", &self.partition_num))
-                    .partition(0 as i32)
-                    .payload(&data),
+                BaseRecord::<std::string::String, std::string::String>::to(
+                    &self.env_config.base_topic,
+                )
+                .key(&format!("event-{}", &self.generator_num))
+                .partition(self.choose_partition())
+                .payload(&data),
             )
             .map_err(|e| anyhow::Error::new(e.0))
+    }
+
+    fn choose_partition(&self) -> i32 {
+        self.generator_num as i32 % self.env_config.num_partitions as i32
     }
 }
 

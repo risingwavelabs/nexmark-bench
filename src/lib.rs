@@ -1,12 +1,15 @@
 use clap::Parser;
 use generator::NexmarkGenerator;
 use generator::{config::GeneratorConfig, source::NexmarkSource};
-use rand::Rng;
+use rand::{Rng, SeedableRng};
+use rand_chacha::ChaCha8Rng;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::time;
 pub mod generator;
 pub mod producer;
+
+static SEED: u64 = 0;
 
 #[derive(Clone, Debug, Parser)]
 pub struct NexmarkConfig {
@@ -42,7 +45,6 @@ pub struct NexmarkConfig {
     pub hot_sellers_ratio: usize,
 
     /// 0 is unlimited.
-    /// #[clap(long, default_value = "100000000")]
     #[clap(long, default_value = "100")]
     pub max_events: u64,
 
@@ -59,6 +61,9 @@ pub struct NexmarkConfig {
     /// Average number of auctions which should be inflight at any time
     #[clap(long, default_value = "100")]
     pub num_in_flight_auctions: usize,
+
+    #[clap(long, short, action)]
+    pub create_topic: bool,
 }
 
 impl Default for NexmarkConfig {
@@ -79,6 +84,7 @@ impl Default for NexmarkConfig {
             num_in_flight_auctions: 100,
             person_proportion: 1,
             source_buffer_size: 10_000,
+            create_topic: false,
         }
     }
 }
@@ -90,16 +96,16 @@ impl NexmarkConfig {
 }
 
 /// Creates generators from config options and sends events directly to kafka
-pub async fn create_generators_for_config<T>(nexmark_config: &NexmarkConfig)
-where
-    T: Rng + Default + std::marker::Send,
+pub async fn create_generators_for_config<'a, T>(
+    nexmark_config: &NexmarkConfig,
+    nexmark_source: &Arc<NexmarkSource>,
+) where
+    T: Rng + std::marker::Send,
 {
     let wallclock_base_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_millis() as u64;
-    let nexmark_source = Arc::new(NexmarkSource::new(nexmark_config));
-    nexmark_source.create_topic().await;
     let mut v = Vec::<tokio::task::JoinHandle<()>>::new();
     let start_time = SystemTime::now();
     for generator_num in 0..nexmark_config.num_event_generators {
@@ -109,14 +115,14 @@ where
             0,
             generator_num,
         );
-        let source = Arc::clone(&nexmark_source);
+        let source = Arc::clone(nexmark_source);
         let jh = tokio::spawn(async move {
+            let rng = ChaCha8Rng::seed_from_u64(SEED);
             let delay = generator_config.inter_event_delay_microseconds;
             let mut interval = time::interval(Duration::from_micros(
                 delay as u64 * generator_config.nexmark_config.num_event_generators as u64,
             ));
-            let mut generator =
-                NexmarkGenerator::new(generator_config.clone(), T::default(), source);
+            let mut generator = NexmarkGenerator::new(generator_config.clone(), rng, source);
             loop {
                 interval.tick().await;
                 let next_event = generator.next_event();
@@ -142,15 +148,15 @@ where
                 .get_producer_for_generator(generator_num)
                 .producer
                 .flush(time::Duration::new(5, 0));
-            println!(
-                "Delivered {} events in {:?}",
-                generator.events_counts_so_far,
-                SystemTime::elapsed(&start_time).unwrap()
-            );
         });
         v.push(jh);
     }
     for jh in v.into_iter() {
         jh.await.unwrap();
     }
+    println!(
+        "Delivered {} events in {:?}",
+        nexmark_config.max_events,
+        SystemTime::elapsed(&start_time).unwrap()
+    );
 }

@@ -23,18 +23,7 @@ impl GeneratorConfig {
     ) -> Self {
         let inter_event_delay_microseconds = 1_000_000.0 / (nexmark_config.first_event_rate as f64);
         let max_events = match nexmark_config.max_events {
-            0 => {
-                // unlimited events allowed, max event determined by size of largest event
-                let max_average = *[
-                    nexmark_config.avg_person_byte_size,
-                    nexmark_config.avg_auction_byte_size,
-                    nexmark_config.avg_bid_byte_size,
-                ]
-                .iter()
-                .max()
-                .unwrap();
-                u64::MAX / (nexmark_config.total_proportion() as u64 * max_average as u64)
-            }
+            0 => u64::MAX,
             _ => nexmark_config.max_events,
         };
         Self {
