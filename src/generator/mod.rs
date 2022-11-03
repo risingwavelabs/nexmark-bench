@@ -15,6 +15,7 @@ pub mod config;
 pub mod events;
 pub mod source;
 
+#[derive(Clone)]
 pub struct NexmarkGenerator<R: Rng> {
     config: GeneratorConfig,
     rng: R,
@@ -33,7 +34,7 @@ where
             rng,
             bid_channel_cache: SizedCache::with_size(CHANNELS_NUMBER as usize),
             events_counts_so_far: 0,
-            nexmark_source: nexmark_source,
+            nexmark_source,
         }
     }
 
