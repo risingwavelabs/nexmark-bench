@@ -65,7 +65,7 @@ impl<R: Rng> NexmarkGenerator<R> {
             date_time: timestamp,
             extra: self.next_extra(
                 current_size,
-                self.config.nexmark_config.avg_person_byte_size,
+                self.config.nexmark_config.additional_person_byte_size,
             ),
         }
     }

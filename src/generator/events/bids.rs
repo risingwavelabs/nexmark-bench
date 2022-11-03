@@ -88,7 +88,10 @@ impl<R: Rng> NexmarkGenerator<R> {
             channel,
             url,
             date_time: timestamp,
-            extra: self.next_extra(current_size, self.config.nexmark_config.avg_bid_byte_size),
+            extra: self.next_extra(
+                current_size,
+                self.config.nexmark_config.additional_bid_byte_size,
+            ),
         }
     }
 }

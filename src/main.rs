@@ -4,11 +4,9 @@ use std::sync::Arc;
 use anyhow;
 use clap::Parser;
 use nexmark_server::{
-    create_generators_for_config, generator::source::NexmarkSource, NexmarkConfig,
+    create_generators_for_config, generator::source::NexmarkSource, parser::NexmarkConfig,
 };
 use rand_chacha::ChaCha8Rng;
-pub mod generator;
-pub mod producer;
 
 #[tokio::main]
 async fn main() {
