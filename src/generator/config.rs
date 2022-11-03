@@ -1,4 +1,4 @@
-use super::super::NexmarkConfig;
+use crate::parser::NexmarkConfig;
 
 pub const FIRST_PERSON_ID: usize = 1000;
 pub const FIRST_AUCTION_ID: usize = 1000;
@@ -21,7 +21,7 @@ impl GeneratorConfig {
         first_event_id: u64,
         first_event_number: usize,
     ) -> Self {
-        let inter_event_delay_microseconds = 1_000_000.0 / (nexmark_config.first_event_rate as f64);
+        let inter_event_delay_microseconds = 1_000_000.0 / (nexmark_config.event_rate as f64);
         let max_events = match nexmark_config.max_events {
             0 => u64::MAX,
             _ => nexmark_config.max_events,

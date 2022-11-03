@@ -56,7 +56,7 @@ impl<R: Rng> NexmarkGenerator<R> {
             category,
             extra: self.next_extra(
                 current_size,
-                self.config.nexmark_config.avg_auction_byte_size,
+                self.config.nexmark_config.additional_auction_byte_size,
             ),
         })
     }

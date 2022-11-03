@@ -1,16 +1,16 @@
 version: '2.1'
 
 services:
-  # nexmark-server:
-  #   build: .
-  #   volumes:
-  #     - .:/usr/src/nexmark-server
-  #   command: tail -f /dev/null
-  #   env_file:
-  #     - ./.env
-  #   depends_on:
-  #     kafka1:
-  #       condition: service_healthy
+  nexmark-server:
+    build: .
+    volumes:
+      - .:/usr/src/nexmark-server
+    command: tail -f /dev/null
+    env_file:
+      - ./.env
+    depends_on:
+      kafka1:
+        condition: service_healthy
 
   zoo1:
     image: confluentinc/cp-zookeeper:7.2.1
