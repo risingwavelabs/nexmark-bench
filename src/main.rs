@@ -1,12 +1,12 @@
-use core::time;
 use std::sync::Arc;
 
-use anyhow;
 use clap::Parser;
-use nexmark_server::{
-    create_generators_for_config, generator::source::NexmarkSource, parser::NexmarkConfig,
-};
+use core::time;
 use rand_chacha::ChaCha8Rng;
+
+use nexmark_server::create_generators_for_config;
+use nexmark_server::generator::source::NexmarkSource;
+use nexmark_server::parser::NexmarkConfig;
 
 #[tokio::main]
 async fn main() {
