@@ -83,4 +83,7 @@ Some kafka errors include unknown partiton errors, which are a result of nexmark
 Error in sending event Bid(Bid { auction: 24600, bidder: 8801, price: 2503825, channel: "Baidu", url: "https://www.nexmark.com/bidu/item.htm?query=1", date_time: 1667712703212, extra: "" }): Message production error: QueueFull (Local: Queue full)
 ```
 
-An error like this indicates that the local kafka producer's buffer is full, since events cannot be sent to kafka quickly enough. Increasing the number of generators --num-event-generators should fix the issue
+An error like this indicates that the local kafka producer's buffer is full, since events cannot be sent to kafka quickly enough. Increasing the number of generators --num-event-generators should fix the issue.
+
+## Benchmarks
+Run ```cargo bench``` to get benchmarks for different qps, event generators and event sizes. Feel free to add more benchmarks as needed.
