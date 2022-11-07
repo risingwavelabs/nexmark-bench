@@ -20,7 +20,7 @@ pub struct NexmarkConfig {
     #[clap(long, default_value = "0")]
     pub additional_person_byte_size: usize,
 
-    #[clap(long, default_value = "1_000")]
+    #[clap(long, default_value = "1000")]
     pub event_rate: usize,
 
     #[clap(long, default_value = "2")]
