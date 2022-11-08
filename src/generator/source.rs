@@ -1,6 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use dotenv::dotenv;
+use log::{info, warn};
 use rdkafka::{
     admin::{AdminClient, AdminOptions, NewTopic},
     config::FromClientConfig,
@@ -55,6 +56,7 @@ impl NexmarkSource {
             .set("acks", "0")
             .set("queue.buffering.max.kbytes", "1000000")
             .set("retries", "0");
+        info!("Using configuration {:?}", client_config);
         client_config
     }
 
@@ -67,8 +69,8 @@ impl NexmarkSource {
     }
 
     async fn delete_topics<T: ClientContext>(&self, admin_client: &AdminClient<T>) {
-        println!("Cleaning up...");
-        admin_client
+        info!("Cleaning up topic...");
+        match admin_client
             .delete_topics(
                 &vec![
                     self.env_config.person_topic.as_str(),
@@ -79,16 +81,24 @@ impl NexmarkSource {
                 &AdminOptions::new(),
             )
             .await
-            .unwrap();
+        {
+            Ok(r) => {
+                info!("Removed topic - {:?}", r);
+            }
+            Err(err) => {
+                warn!("Did not remove topic - {:?}", err)
+            }
+        }
+        // Wait for kafka to retain the change
         tokio::time::sleep(Duration::from_secs(3)).await;
     }
 
     pub async fn create_topic(&self) {
         let admin_client = AdminClient::from_config(&self.client_config).unwrap();
         self.delete_topics(&admin_client).await;
-        println!("Creating...");
+        info!("Creating topic...");
         match self.env_config.separate_topics {
-            true => admin_client
+            true => match admin_client
                 .create_topics(
                     vec![
                         &NewTopic::new(
@@ -110,8 +120,15 @@ impl NexmarkSource {
                     &AdminOptions::new(),
                 )
                 .await
-                .unwrap(),
-            false => admin_client
+            {
+                Ok(r) => {
+                    info!("Created topic - {:?}", r);
+                }
+                Err(err) => {
+                    warn!("Could not create topic - {:?}", err)
+                }
+            },
+            false => match admin_client
                 .create_topics(
                     vec![&NewTopic::new(
                         &self.env_config.base_topic,
@@ -121,7 +138,14 @@ impl NexmarkSource {
                     &AdminOptions::new(),
                 )
                 .await
-                .unwrap(),
+            {
+                Ok(r) => {
+                    info!("Created topic - {:?}", r);
+                }
+                Err(err) => {
+                    warn!("Could not create topic - {:?}", err)
+                }
+            },
         };
     }
 

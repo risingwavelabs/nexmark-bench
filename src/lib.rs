@@ -1,5 +1,6 @@
 use generator::NexmarkGenerator;
 use generator::{config::GeneratorConfig, source::NexmarkSource};
+use log::{error, info};
 use parser::NexmarkConfig;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
@@ -11,6 +12,7 @@ pub mod parser;
 pub mod producer;
 
 static SEED: u64 = 0;
+pub const LOG_FREQUENCY: usize = 1000;
 
 /// Creates generators from config options and sends events directly to kafka
 pub async fn create_generators_for_config<'a, T>(
@@ -51,13 +53,13 @@ pub async fn create_generators_for_config<'a, T>(
                                 .get_producer_for_generator(generator_num)
                                 .send_data_to_topic(&next_e)
                             {
-                                eprintln!("Error in sending event {:?}: {}", &next_e, &err);
+                                error!("Error in sending event {:?}: {}", &next_e, &err);
                                 continue;
                             }
                         }
                         None => break,
                     },
-                    Err(err) => eprintln!("Error in generating event {:?}: {}", &next_event, &err),
+                    Err(err) => error!("Error in generating event {:?}: {}", &next_event, &err),
                 };
             }
             generator
@@ -71,7 +73,7 @@ pub async fn create_generators_for_config<'a, T>(
     for jh in v.into_iter() {
         jh.await.unwrap();
     }
-    println!(
+    info!(
         "Delivered {} events in {:?}",
         nexmark_config.max_events,
         SystemTime::elapsed(&start_time).unwrap()
