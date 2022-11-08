@@ -21,7 +21,7 @@ impl GeneratorConfig {
         first_event_id: u64,
         first_event_number: usize,
     ) -> Self {
-        let inter_event_delay_microseconds = 1_000_000.0 / (nexmark_config.event_rate as f64);
+        let inter_event_delay_microseconds = Self::get_inter_event_delay(&nexmark_config);
         let max_events = match nexmark_config.max_events {
             0 => u64::MAX,
             _ => nexmark_config.max_events,
@@ -34,6 +34,15 @@ impl GeneratorConfig {
             max_events,
             inter_event_delay_microseconds,
         }
+    }
+
+    pub fn get_inter_event_delay(nexmark_config: &NexmarkConfig) -> f64 {
+        1_000_000.0 / (nexmark_config.event_rate as f64)
+    }
+
+    pub fn get_delay_per_generator(nexmark_config: &NexmarkConfig) -> f64 {
+        GeneratorConfig::get_inter_event_delay(nexmark_config)
+            * nexmark_config.num_event_generators as f64
     }
 
     pub fn next_event_number(&self, num_events: u64) -> u64 {

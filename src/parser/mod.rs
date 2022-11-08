@@ -51,6 +51,9 @@ pub struct NexmarkConfig {
 
     #[clap(long, short, action)]
     pub create_topic: bool,
+
+    #[clap(long, short, action)]
+    pub dynamic_qps: bool,
 }
 
 impl Default for NexmarkConfig {
@@ -72,6 +75,7 @@ impl Default for NexmarkConfig {
             person_proportion: 1,
             source_buffer_size: 10_000,
             create_topic: false,
+            dynamic_qps: false,
         }
     }
 }
