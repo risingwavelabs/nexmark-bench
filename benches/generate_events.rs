@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
 use criterion::criterion_group;
@@ -5,8 +7,10 @@ use criterion::criterion_main;
 use criterion::BenchmarkId;
 use criterion::Criterion;
 use nexmark_server::create_generators_for_config;
+use nexmark_server::generator::config::GeneratorConfig;
 use nexmark_server::generator::source::NexmarkSource;
 use nexmark_server::parser::NexmarkConfig;
+use nexmark_server::NexmarkInterval;
 use rand_chacha::ChaCha8Rng;
 
 fn event_generation(c: &mut Criterion) {
@@ -15,11 +19,23 @@ fn event_generation(c: &mut Criterion) {
     for qps in [1_000, 10_000, 100_000, 1_000_000].iter() {
         let mut nexmark_config = NexmarkConfig::default();
         nexmark_config.event_rate = *qps;
+        let interval = Arc::new(NexmarkInterval {
+            microseconds: AtomicU64::new(
+                nexmark_config.num_event_generators as u64
+                    * GeneratorConfig::get_event_delay_microseconds(&nexmark_config) as u64,
+            ),
+        });
+        let running = Arc::new(AtomicBool::new(true));
         let nexmark_source = Arc::new(NexmarkSource::new(&nexmark_config));
         group.bench_with_input(BenchmarkId::from_parameter(qps), qps, |b, &_qps| {
             b.to_async(tokio::runtime::Runtime::new().unwrap())
                 .iter(|| {
-                    create_generators_for_config::<ChaCha8Rng>(&nexmark_config, &nexmark_source)
+                    create_generators_for_config::<ChaCha8Rng>(
+                        &nexmark_config,
+                        &nexmark_source,
+                        Arc::clone(&running),
+                        Arc::clone(&interval),
+                    )
                 });
         });
     }
@@ -29,15 +45,27 @@ fn event_generation(c: &mut Criterion) {
         let mut nexmark_config = NexmarkConfig::default();
         nexmark_config.num_event_generators = num_gen as usize;
         nexmark_config.event_rate = 10_000;
+        let interval = Arc::new(NexmarkInterval {
+            microseconds: AtomicU64::new(
+                nexmark_config.num_event_generators as u64
+                    * GeneratorConfig::get_event_delay_microseconds(&nexmark_config) as u64,
+            ),
+        });
         nexmark_config.max_events = 1_000;
         let nexmark_source = Arc::new(NexmarkSource::new(&nexmark_config));
+        let running = Arc::new(AtomicBool::new(true));
         group.bench_with_input(
             BenchmarkId::from_parameter(num_gen),
             &num_gen,
             |b, &_num_gen| {
                 b.to_async(tokio::runtime::Runtime::new().unwrap())
                     .iter(|| {
-                        create_generators_for_config::<ChaCha8Rng>(&nexmark_config, &nexmark_source)
+                        create_generators_for_config::<ChaCha8Rng>(
+                            &nexmark_config,
+                            &nexmark_source,
+                            Arc::clone(&running),
+                            Arc::clone(&interval),
+                        )
                     });
             },
         );
@@ -51,14 +79,26 @@ fn event_generation(c: &mut Criterion) {
         nexmark_config.additional_auction_byte_size = byte_size;
         nexmark_config.additional_bid_byte_size = byte_size;
         nexmark_config.additional_person_byte_size = byte_size;
+        let interval = Arc::new(NexmarkInterval {
+            microseconds: AtomicU64::new(
+                nexmark_config.num_event_generators as u64
+                    * GeneratorConfig::get_event_delay_microseconds(&nexmark_config) as u64,
+            ),
+        });
         let nexmark_source = Arc::new(NexmarkSource::new(&nexmark_config));
+        let running = Arc::new(AtomicBool::new(true));
         group.bench_with_input(
             BenchmarkId::from_parameter(byte_size),
             &byte_size,
             |b, &_byte_size| {
                 b.to_async(tokio::runtime::Runtime::new().unwrap())
                     .iter(|| {
-                        create_generators_for_config::<ChaCha8Rng>(&nexmark_config, &nexmark_source)
+                        create_generators_for_config::<ChaCha8Rng>(
+                            &nexmark_config,
+                            &nexmark_source,
+                            Arc::clone(&running),
+                            Arc::clone(&interval),
+                        )
                     });
             },
         );
