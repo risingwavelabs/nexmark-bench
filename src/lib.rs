@@ -3,6 +3,8 @@ use generator::{config::GeneratorConfig, source::NexmarkSource};
 use parser::NexmarkConfig;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::time;
@@ -16,6 +18,7 @@ static SEED: u64 = 0;
 pub async fn create_generators_for_config<'a, T>(
     nexmark_config: &NexmarkConfig,
     nexmark_source: &Arc<NexmarkSource>,
+    running: Arc<AtomicBool>,
 ) where
     T: Rng + std::marker::Send,
 {
@@ -32,6 +35,7 @@ pub async fn create_generators_for_config<'a, T>(
             0,
             generator_num,
         );
+        let running = Arc::clone(&running);
         let source = Arc::clone(nexmark_source);
         let jh = tokio::spawn(async move {
             let rng = ChaCha8Rng::seed_from_u64(SEED);
@@ -43,6 +47,9 @@ pub async fn create_generators_for_config<'a, T>(
             loop {
                 interval.tick().await;
                 let next_event = generator.next_event();
+                if !running.load(Ordering::SeqCst) {
+                    break;
+                }
                 match &next_event {
                     Ok(e) => match e {
                         Some(next_e) => {

@@ -23,6 +23,8 @@ rdkafka = { version = "0.24", features = ["cmake-build"] }
 envy = "0.4"
 rand_chacha="0.3.1"
 futures = "0.3"
+rocket = { version = "0.5.0-rc.2", features = ["json"] }
+ctrlc = { version = "3.0", features = ["termination"] }
 
 [dev-dependencies]
 criterion = { version = "0.3", features = ["async_tokio"] }
