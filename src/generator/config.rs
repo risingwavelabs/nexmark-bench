@@ -38,8 +38,8 @@ impl GeneratorConfig {
         }
     }
 
-    pub fn get_event_delay_microseconds(nexmark_config: &NexmarkConfig) -> f64 {
-        1_000_000.0 / (nexmark_config.event_rate as f64)
+    pub fn get_event_delay_microseconds(event_rate: usize, num_generators: usize) -> u64 {
+        1_000_000.0 as u64 * num_generators as u64 / event_rate as u64
     }
 
     pub fn next_event_number(&self, num_events: u64) -> u64 {

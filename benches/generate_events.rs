@@ -22,7 +22,10 @@ fn event_generation(c: &mut Criterion) {
         let interval = Arc::new(NexmarkInterval {
             microseconds: AtomicU64::new(
                 nexmark_config.num_event_generators as u64
-                    * GeneratorConfig::get_event_delay_microseconds(&nexmark_config) as u64,
+                    * GeneratorConfig::get_event_delay_microseconds(
+                        nexmark_config.event_rate,
+                        nexmark_config.num_event_generators,
+                    ) as u64,
             ),
         });
         let running = Arc::new(AtomicBool::new(true));
@@ -48,7 +51,10 @@ fn event_generation(c: &mut Criterion) {
         let interval = Arc::new(NexmarkInterval {
             microseconds: AtomicU64::new(
                 nexmark_config.num_event_generators as u64
-                    * GeneratorConfig::get_event_delay_microseconds(&nexmark_config) as u64,
+                    * GeneratorConfig::get_event_delay_microseconds(
+                        nexmark_config.event_rate,
+                        nexmark_config.num_event_generators,
+                    ) as u64,
             ),
         });
         nexmark_config.max_events = 1_000;
@@ -82,7 +88,10 @@ fn event_generation(c: &mut Criterion) {
         let interval = Arc::new(NexmarkInterval {
             microseconds: AtomicU64::new(
                 nexmark_config.num_event_generators as u64
-                    * GeneratorConfig::get_event_delay_microseconds(&nexmark_config) as u64,
+                    * GeneratorConfig::get_event_delay_microseconds(
+                        nexmark_config.event_rate,
+                        nexmark_config.num_event_generators,
+                    ) as u64,
             ),
         });
         let nexmark_source = Arc::new(NexmarkSource::new(&nexmark_config));

@@ -24,10 +24,10 @@ async fn main() {
     let conf = NexmarkConfig::parse();
     let nexmark_source = Arc::new(NexmarkSource::new(&conf));
     let interval = Arc::new(NexmarkInterval {
-        microseconds: AtomicU64::new(
-            conf.num_event_generators as u64
-                * GeneratorConfig::get_event_delay_microseconds(&conf) as u64,
-        ),
+        microseconds: AtomicU64::new(GeneratorConfig::get_event_delay_microseconds(
+            conf.event_rate,
+            conf.num_event_generators,
+        ) as u64),
     });
     match &conf.create_topic {
         true => tokio::time::timeout(time::Duration::from_secs(10), nexmark_source.create_topic())
@@ -41,6 +41,7 @@ async fn main() {
         false => {
             let rocket = rocket::build()
                 .manage(Arc::clone(&interval))
+                .manage(conf.clone())
                 .mount("/nexmark", routes![qps])
                 .ignite()
                 .await
