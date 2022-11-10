@@ -2,20 +2,16 @@ use anyhow;
 use clap::Parser;
 use core::time;
 use nexmark_server::generator::config::GeneratorConfig;
+use nexmark_server::server::qps;
 use nexmark_server::NexmarkInterval;
 use nexmark_server::{
     create_generators_for_config, generator::source::NexmarkSource, parser::NexmarkConfig,
 };
 use rand_chacha::ChaCha8Rng;
-use rocket::post;
-use rocket::serde::json::Json;
-use rocket::State;
-use rocket::{response::status, routes};
+use rocket::routes;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Arc;
-
-use serde::Deserialize;
 
 #[tokio::main]
 async fn main() {
@@ -61,21 +57,4 @@ async fn main() {
             shutdown_handle.notify();
         }
     }
-}
-
-#[derive(Deserialize)]
-#[serde(crate = "rocket::serde")]
-struct QPSHandler {
-    qps: usize,
-}
-
-#[post("/qps", data = "<qps_handler>")]
-fn qps(
-    qps_handler: Json<QPSHandler>,
-    state: &State<Arc<NexmarkInterval>>,
-) -> status::Accepted<std::string::String> {
-    state
-        .microseconds
-        .store(1_000_000 / qps_handler.qps as u64, Ordering::Relaxed);
-    status::Accepted(Some(format!("qps: {}", qps_handler.qps)))
 }

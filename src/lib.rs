@@ -11,6 +11,7 @@ use tokio::time;
 pub mod generator;
 pub mod parser;
 pub mod producer;
+pub mod server;
 
 static SEED: u64 = 0;
 
