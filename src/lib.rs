@@ -69,9 +69,11 @@ pub async fn create_generators_for_config<'a, T>(
             loop {
                 interval.tick().await;
                 let next_event = generator.next_event();
+                // if ctrc has been received, terminate the thread
                 if !running.load(Ordering::SeqCst) {
                     break;
                 }
+                // if the interval has been chanegd by a POST to /nexmark/qps, change interval in generator
                 if interval.period().as_micros() as u64
                     != atomic_interval_supplied
                         .microseconds
