@@ -1,15 +1,15 @@
-use crate::generator::{
-    config::{FIRST_AUCTION_ID, FIRST_PERSON_ID},
-    NexmarkGenerator,
-};
+use std::mem::size_of;
 
-use super::{strings::next_string, Bid};
 use arcstr::ArcStr;
 use cached::Cached;
 use rand::Rng;
-use std::mem::size_of;
 
-const HOT_AUCTON_RATIO: usize = 100;
+use crate::generator::config::{FIRST_AUCTION_ID, FIRST_PERSON_ID};
+use crate::generator::events::strings::{milli_ts_to_timestamp_string, next_string};
+use crate::generator::events::Bid;
+use crate::generator::NexmarkGenerator;
+
+const HOT_AUCTION_RATIO: usize = 100;
 const HOT_BIDDER_RATIO: usize = 100;
 const HOT_CHANNELS_RATIO: usize = 100;
 
@@ -53,8 +53,8 @@ impl<R: Rng> NexmarkGenerator<R> {
         {
             0 => self.next_base0_auction_id(event_id),
             _ => {
-                (self.last_base0_auction_id(event_id) / HOT_AUCTON_RATIO as u64)
-                    * HOT_AUCTON_RATIO as u64
+                (self.last_base0_auction_id(event_id) / HOT_AUCTION_RATIO as u64)
+                    * HOT_AUCTION_RATIO as u64
             }
         } + FIRST_AUCTION_ID as u64;
 
@@ -87,7 +87,7 @@ impl<R: Rng> NexmarkGenerator<R> {
             price,
             channel,
             url,
-            date_time: timestamp,
+            date_time: milli_ts_to_timestamp_string(timestamp),
             extra: self.next_extra(
                 current_size,
                 self.config.nexmark_config.additional_bid_byte_size,

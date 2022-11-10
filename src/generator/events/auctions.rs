@@ -1,15 +1,12 @@
-use crate::generator::{
-    config::{FIRST_AUCTION_ID, FIRST_CATEGORY_ID, FIRST_PERSON_ID},
-    NexmarkGenerator,
-};
+use std::cmp;
+use std::mem::{size_of, size_of_val};
 
-use super::Auction;
 use anyhow::Result;
 use rand::Rng;
-use std::{
-    cmp,
-    mem::{size_of, size_of_val},
-};
+
+use crate::generator::config::{FIRST_AUCTION_ID, FIRST_CATEGORY_ID, FIRST_PERSON_ID};
+use crate::generator::events::{strings::milli_ts_to_timestamp_string, Auction};
+use crate::generator::NexmarkGenerator;
 
 const NUM_CATEGORIES: usize = 5;
 const HOT_SELLER_RATIO: usize = 100;
@@ -50,8 +47,8 @@ impl<R: Rng> NexmarkGenerator<R> {
             description,
             initial_bid,
             reserve,
-            date_time: timestamp,
-            expires: timestamp + next_length_ms,
+            date_time: milli_ts_to_timestamp_string(timestamp),
+            expires: milli_ts_to_timestamp_string(timestamp + next_length_ms),
             seller,
             category,
             extra: self.next_extra(

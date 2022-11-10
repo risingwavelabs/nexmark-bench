@@ -1,15 +1,13 @@
 use std::sync::Arc;
 
-use self::{
-    config::GeneratorConfig,
-    events::{bids::CHANNELS_NUMBER, Event},
-    source::NexmarkSource,
-};
-
 use anyhow::Result;
 use arcstr::ArcStr;
 use cached::SizedCache;
 use rand::Rng;
+
+use crate::generator::config::GeneratorConfig;
+use crate::generator::events::{bids::CHANNELS_NUMBER, Event};
+use crate::generator::source::NexmarkSource;
 
 pub mod config;
 pub mod events;
@@ -33,7 +31,7 @@ where
             rng,
             bid_channel_cache: SizedCache::with_size(CHANNELS_NUMBER as usize),
             events_counts_so_far: 0,
-            nexmark_source: nexmark_source,
+            nexmark_source,
         }
     }
 
