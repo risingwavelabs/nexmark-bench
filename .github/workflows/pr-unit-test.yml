@@ -1,0 +1,57 @@
+name: pr-unit-test
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+    - "src/**"
+  pull_request:
+    branches: [ main ]
+    paths:
+    - "src/**"
+      
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'info' 
+        type: choice
+        options:
+        - info
+        - warning
+        - debug 
+env:
+  RUST_TOOLCHAIN: nightly-2022-10-16
+  CARGO_TERM_COLOR: always
+
+jobs:
+  orchestrator-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt, clippy
+      - name: Install cargo-sort
+        run: |
+          cargo install cargo-sort
+      - name: Run rust cargo-sort check
+        run: |
+          make rust_cargo_sort_check
+      - name: Run rust format check
+        run: |
+          make rust_fmt_check
+      - name: Run rust clippy check
+        run: |
+          # If new CI checks are added, the one with `--locked` must be run first.
+          make rust_clippy_check_locked
+      - name: Build Orchestrator
+        run: make rust_build
+      - name: Unit Test
+        run: make rust_test
+
+

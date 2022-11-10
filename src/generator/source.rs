@@ -1,14 +1,13 @@
 use std::{sync::Arc, time::Duration};
 
 use dotenv::dotenv;
-use rdkafka::{
-    admin::{AdminClient, AdminOptions, NewTopic},
-    config::FromClientConfig,
-    ClientConfig, ClientContext,
-};
+use rdkafka::admin::{AdminClient, AdminOptions, NewTopic};
+use rdkafka::config::FromClientConfig;
+use rdkafka::{ClientConfig, ClientContext};
 use serde::Deserialize;
 
-use crate::{producer::KafkaProducer, NexmarkConfig};
+use crate::producer::KafkaProducer;
+use crate::NexmarkConfig;
 
 // send one message per topic without replication
 const REPLICATION_FACTOR: i32 = 1;
@@ -21,7 +20,7 @@ pub struct NexmarkSource {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct EnvConfig {
-    host: String,
+    kafka_host: String,
     pub num_partitions: i32,
     pub separate_topics: bool,
     pub base_topic: String,
@@ -34,21 +33,22 @@ impl NexmarkSource {
     pub fn new(nexmark_config: &NexmarkConfig) -> Self {
         dotenv().ok();
         let env_config = Arc::new(NexmarkSource::load_env());
-        let client_config = NexmarkSource::generate_client_config(&env_config.host);
+        println!("Kafka address: {:?}", env_config.kafka_host);
+        let client_config = NexmarkSource::generate_client_config(&env_config.kafka_host);
         let producers: Vec<KafkaProducer> = (0..nexmark_config.num_event_generators)
             .map(|i| KafkaProducer::new(&client_config, Arc::clone(&env_config), i))
             .collect();
         Self {
             producers,
-            client_config: client_config.to_owned(),
+            client_config,
             env_config,
         }
     }
 
-    fn generate_client_config(host: &str) -> ClientConfig {
+    fn generate_client_config(kafka_host: &str) -> ClientConfig {
         let mut client_config = ClientConfig::new();
         client_config
-            .set("bootstrap.servers", &host)
+            .set("bootstrap.servers", kafka_host)
             .set("batch.size", "100000")
             .set("linger.ms", "0")
             .set("compression.type", "lz4")
@@ -61,7 +61,7 @@ impl NexmarkSource {
     fn load_env() -> EnvConfig {
         dotenv().ok();
         match envy::from_env::<EnvConfig>() {
-            Ok(config) => return config,
+            Ok(config) => config,
             Err(err) => panic!("{:?}", err),
         }
     }
@@ -70,7 +70,7 @@ impl NexmarkSource {
         println!("Cleaning up...");
         admin_client
             .delete_topics(
-                &vec![
+                &[
                     self.env_config.person_topic.as_str(),
                     self.env_config.auction_topic.as_str(),
                     self.env_config.bid_topic.as_str(),

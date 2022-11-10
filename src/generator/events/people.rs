@@ -1,12 +1,13 @@
-use crate::generator::{config::FIRST_PERSON_ID, NexmarkGenerator};
+use std::cmp::min;
+use std::mem::{size_of, size_of_val};
 
-use super::Person;
 use arcstr::ArcStr;
 use rand::{seq::SliceRandom, Rng};
-use std::{
-    cmp::min,
-    mem::{size_of, size_of_val},
-};
+
+use crate::generator::config::FIRST_PERSON_ID;
+use crate::generator::events::strings::milli_ts_to_timestamp_string;
+use crate::generator::events::Person;
+use crate::generator::NexmarkGenerator;
 
 // Number of yet-to-be-created people and auction ids allowed.
 pub const PERSON_ID_LEAD: usize = 10;
@@ -62,7 +63,7 @@ impl<R: Rng> NexmarkGenerator<R> {
             credit_card,
             city,
             state,
-            date_time: timestamp,
+            date_time: milli_ts_to_timestamp_string(timestamp),
             extra: self.next_extra(
                 current_size,
                 self.config.nexmark_config.additional_person_byte_size,

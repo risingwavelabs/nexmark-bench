@@ -12,6 +12,10 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
+use nexmark_server::create_generators_for_config;
+use nexmark_server::generator::source::NexmarkSource;
+use nexmark_server::parser::NexmarkConfig;
+
 #[tokio::main]
 async fn main() {
     let running = Arc::new(AtomicBool::new(true));

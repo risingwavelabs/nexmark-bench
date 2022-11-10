@@ -8,6 +8,11 @@ use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::time;
+
+use crate::generator::NexmarkGenerator;
+use crate::generator::{config::GeneratorConfig, source::NexmarkSource};
+use crate::parser::NexmarkConfig;
+
 pub mod generator;
 pub mod parser;
 pub mod producer;
@@ -88,7 +93,7 @@ pub async fn create_generators_for_config<'a, T>(
                             if let Err(err) = generator
                                 .nexmark_source
                                 .get_producer_for_generator(generator_num)
-                                .send_data_to_topic(&next_e)
+                                .send_data_to_topic(next_e)
                             {
                                 eprintln!("Error in sending event {:?}: {}", &next_e, &err);
                                 continue;

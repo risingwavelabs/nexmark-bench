@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
+use anyhow::Result;
+use rdkafka::producer::{BaseRecord, ProducerContext, ThreadedProducer};
+use rdkafka::{ClientConfig, ClientContext, Message};
+
 use crate::generator::{events::Event, source::EnvConfig};
 use crate::producer::Event::{Auction, Bid, Person};
-use anyhow::Result;
-use rdkafka::{
-    producer::{BaseRecord, ProducerContext, ThreadedProducer},
-    ClientConfig, ClientContext, Message,
-};
 
 pub struct KafkaProducer {
     pub producer: ThreadedProducer<ProduceCallbackLogger>,
@@ -31,7 +30,7 @@ impl KafkaProducer {
     }
 
     pub fn send_data_to_topic(&self, data: &Event) -> Result<()> {
-        let payload = serde_json::to_string(data)?;
+        let payload = data.to_json()?;
         self.producer
             .send(
                 BaseRecord::<std::string::String, std::string::String>::to(self.choose_topic(data))
@@ -43,7 +42,7 @@ impl KafkaProducer {
     }
 
     fn choose_partition(&self) -> i32 {
-        self.generator_num as i32 % self.env_config.num_partitions as i32
+        self.generator_num as i32 % self.env_config.num_partitions
     }
 
     fn choose_topic(&self, data: &Event) -> &str {

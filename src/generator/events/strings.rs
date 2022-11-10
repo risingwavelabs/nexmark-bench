@@ -1,4 +1,5 @@
 use arcstr::ArcStr;
+use chrono::NaiveDateTime;
 use rand::{distributions::Alphanumeric, distributions::DistString, Rng};
 
 use crate::generator::NexmarkGenerator;
@@ -34,4 +35,14 @@ impl<R: Rng> NexmarkGenerator<R> {
     pub fn next_extra(&mut self, current_size: usize, desired_average_size: usize) -> ArcStr {
         next_extra(&mut self.rng, current_size, desired_average_size)
     }
+}
+
+pub fn milli_ts_to_timestamp_string(milli_ts: u64) -> ArcStr {
+    NaiveDateTime::from_timestamp(
+        milli_ts as i64 / 1000,
+        (milli_ts % (1000_u64)) as u32 * 1000000,
+    )
+    .format("%Y-%m-%d %H:%M:%S%.f")
+    .to_string()
+    .into()
 }
