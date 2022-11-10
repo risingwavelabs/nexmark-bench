@@ -10,7 +10,7 @@ setup-docker-build:
 	docker compose -f services.yml up --build
 
 rust_check_all: 
-	rust_fmt_check && rust_clippy_check && rust_cargo_sort_check
+	$(MAKE) rust_fmt_check && $(MAKE) rust_clippy_check && $(MAKE) rust_cargo_sort_check
 
 rust_fmt_check:
 	cargo fmt --all -- --check

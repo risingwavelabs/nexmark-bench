@@ -53,7 +53,7 @@ impl GeneratorConfig {
                 .inter_event_delay
                 .microseconds
                 .load(std::sync::atomic::Ordering::Relaxed)
-                * event_number as u64)
+                * event_number)
                 / 1000
     }
 }

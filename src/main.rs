@@ -1,4 +1,3 @@
-use anyhow;
 use clap::Parser;
 use core::time;
 use nexmark_server::server::qps;

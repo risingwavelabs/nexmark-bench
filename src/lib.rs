@@ -27,7 +27,7 @@ impl NexmarkInterval {
             microseconds: AtomicU64::new(GeneratorConfig::get_event_delay_microseconds(
                 config.event_rate,
                 config.num_event_generators,
-            ) as u64),
+            )),
         }
     }
 }
