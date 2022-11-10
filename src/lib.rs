@@ -20,6 +20,17 @@ pub struct NexmarkInterval {
     pub microseconds: AtomicU64,
 }
 
+impl NexmarkInterval {
+    pub fn new(config: &NexmarkConfig) -> Self {
+        Self {
+            microseconds: AtomicU64::new(GeneratorConfig::get_event_delay_microseconds(
+                config.event_rate,
+                config.num_event_generators,
+            ) as u64),
+        }
+    }
+}
+
 /// Creates generators from config options and sends events directly to kafka
 pub async fn create_generators_for_config<'a, T>(
     nexmark_config: &NexmarkConfig,

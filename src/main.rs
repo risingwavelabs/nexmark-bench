@@ -1,7 +1,6 @@
 use anyhow;
 use clap::Parser;
 use core::time;
-use nexmark_server::generator::config::GeneratorConfig;
 use nexmark_server::server::qps;
 use nexmark_server::NexmarkInterval;
 use nexmark_server::{
@@ -9,8 +8,8 @@ use nexmark_server::{
 };
 use rand_chacha::ChaCha8Rng;
 use rocket::routes;
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
-use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Arc;
 
 #[tokio::main]
@@ -23,12 +22,7 @@ async fn main() {
     .expect("Error setting Ctrl-C handler");
     let conf = NexmarkConfig::parse();
     let nexmark_source = Arc::new(NexmarkSource::new(&conf));
-    let interval = Arc::new(NexmarkInterval {
-        microseconds: AtomicU64::new(GeneratorConfig::get_event_delay_microseconds(
-            conf.event_rate,
-            conf.num_event_generators,
-        ) as u64),
-    });
+    let interval = Arc::new(NexmarkInterval::new(&conf));
     match &conf.create_topic {
         true => tokio::time::timeout(time::Duration::from_secs(10), nexmark_source.create_topic())
             .await

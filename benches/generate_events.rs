@@ -1,5 +1,4 @@
 use std::sync::atomic::AtomicBool;
-use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
 use criterion::criterion_group;
@@ -7,7 +6,6 @@ use criterion::criterion_main;
 use criterion::BenchmarkId;
 use criterion::Criterion;
 use nexmark_server::create_generators_for_config;
-use nexmark_server::generator::config::GeneratorConfig;
 use nexmark_server::generator::source::NexmarkSource;
 use nexmark_server::parser::NexmarkConfig;
 use nexmark_server::NexmarkInterval;
@@ -19,15 +17,7 @@ fn event_generation(c: &mut Criterion) {
     for qps in [1_000, 10_000, 100_000, 1_000_000].iter() {
         let mut nexmark_config = NexmarkConfig::default();
         nexmark_config.event_rate = *qps;
-        let interval = Arc::new(NexmarkInterval {
-            microseconds: AtomicU64::new(
-                nexmark_config.num_event_generators as u64
-                    * GeneratorConfig::get_event_delay_microseconds(
-                        nexmark_config.event_rate,
-                        nexmark_config.num_event_generators,
-                    ) as u64,
-            ),
-        });
+        let interval = Arc::new(NexmarkInterval::new(&nexmark_config));
         let running = Arc::new(AtomicBool::new(true));
         let nexmark_source = Arc::new(NexmarkSource::new(&nexmark_config));
         group.bench_with_input(BenchmarkId::from_parameter(qps), qps, |b, &_qps| {
@@ -48,15 +38,7 @@ fn event_generation(c: &mut Criterion) {
         let mut nexmark_config = NexmarkConfig::default();
         nexmark_config.num_event_generators = num_gen as usize;
         nexmark_config.event_rate = 10_000;
-        let interval = Arc::new(NexmarkInterval {
-            microseconds: AtomicU64::new(
-                nexmark_config.num_event_generators as u64
-                    * GeneratorConfig::get_event_delay_microseconds(
-                        nexmark_config.event_rate,
-                        nexmark_config.num_event_generators,
-                    ) as u64,
-            ),
-        });
+        let interval = Arc::new(NexmarkInterval::new(&nexmark_config));
         nexmark_config.max_events = 1_000;
         let nexmark_source = Arc::new(NexmarkSource::new(&nexmark_config));
         let running = Arc::new(AtomicBool::new(true));
@@ -85,15 +67,7 @@ fn event_generation(c: &mut Criterion) {
         nexmark_config.additional_auction_byte_size = byte_size;
         nexmark_config.additional_bid_byte_size = byte_size;
         nexmark_config.additional_person_byte_size = byte_size;
-        let interval = Arc::new(NexmarkInterval {
-            microseconds: AtomicU64::new(
-                nexmark_config.num_event_generators as u64
-                    * GeneratorConfig::get_event_delay_microseconds(
-                        nexmark_config.event_rate,
-                        nexmark_config.num_event_generators,
-                    ) as u64,
-            ),
-        });
+        let interval = Arc::new(NexmarkInterval::new(&nexmark_config));
         let nexmark_source = Arc::new(NexmarkSource::new(&nexmark_config));
         let running = Arc::new(AtomicBool::new(true));
         group.bench_with_input(
