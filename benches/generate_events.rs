@@ -38,13 +38,13 @@ fn event_generation(c: &mut Criterion) {
     // vary the number of generators and monitor the time required to send 1,000 events
     // since the qps is 10_000, gold standard is 0.1s per iter
     for num_gen in 1..10 {
-        let interval = Arc::new(NexmarkInterval::new(&nexmark_config));
         let nexmark_config = NexmarkConfig {
             num_event_generators: num_gen as usize,
             event_rate: 10_000,
             max_events: 1_000,
             ..Default::default()
         };
+        let interval = Arc::new(NexmarkInterval::new(&nexmark_config));
         let nexmark_source = Arc::new(NexmarkSource::new(&nexmark_config));
         let running = Arc::new(AtomicBool::new(true));
         group.bench_with_input(
@@ -66,7 +66,7 @@ fn event_generation(c: &mut Criterion) {
     // vary the event byte size and monitor the time required to send 1,000 events
     // since the qps is 10_000, gold standard is 0.1s per iter
     for byte_size in [100, 200, 300, 400, 500] {
-        let mut nexmark_config = NexmarkConfig::default();
+        let nexmark_config = NexmarkConfig::default();
         let interval = Arc::new(NexmarkInterval::new(&nexmark_config));
         let nexmark_config = NexmarkConfig {
             event_rate: 10_000,

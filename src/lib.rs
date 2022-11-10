@@ -9,10 +9,6 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use tokio::time;
 
-use crate::generator::NexmarkGenerator;
-use crate::generator::{config::GeneratorConfig, source::NexmarkSource};
-use crate::parser::NexmarkConfig;
-
 pub mod generator;
 pub mod parser;
 pub mod producer;
