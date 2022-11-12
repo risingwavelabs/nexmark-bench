@@ -4,8 +4,8 @@ use anyhow::Result;
 use rdkafka::producer::{BaseRecord, ProducerContext, ThreadedProducer};
 use rdkafka::{ClientConfig, ClientContext, Message};
 
-use crate::generator::{events::Event, source::EnvConfig};
-use crate::producer::Event::{Auction, Bid, Person};
+use crate::generator::nexmark::event::Event;
+use crate::generator::source::EnvConfig;
 
 pub struct KafkaProducer {
     pub producer: ThreadedProducer<ProduceCallbackLogger>,
@@ -30,7 +30,7 @@ impl KafkaProducer {
     }
 
     pub fn send_data_to_topic(&self, data: &Event) -> Result<()> {
-        let payload = data.to_json()?;
+        let payload = data.to_json();
         self.producer
             .send(
                 BaseRecord::<std::string::String, std::string::String>::to(self.choose_topic(data))
@@ -46,13 +46,14 @@ impl KafkaProducer {
     }
 
     fn choose_topic(&self, data: &Event) -> &str {
-        match self.env_config.separate_topics {
-            false => &self.env_config.base_topic,
-            true => match *data {
-                Person(_) => &self.env_config.person_topic,
-                Auction(_) => &self.env_config.auction_topic,
-                Bid(_) => &self.env_config.bid_topic,
-            },
+        if self.env_config.separate_topics {
+            match *data {
+                Event::Person(_) => &self.env_config.person_topic,
+                Event::Auction(_) => &self.env_config.auction_topic,
+                Event::Bid(_) => &self.env_config.bid_topic,
+            }
+        } else {
+            &self.env_config.base_topic
         }
     }
 }

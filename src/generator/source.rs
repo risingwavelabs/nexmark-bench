@@ -1,16 +1,20 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
+use std::time::Duration;
 
+use anyhow::Result;
 use dotenv::dotenv;
 use rdkafka::admin::{AdminClient, AdminOptions, NewTopic};
 use rdkafka::config::FromClientConfig;
+use rdkafka::consumer::{BaseConsumer, Consumer, DefaultConsumerContext};
 use rdkafka::{ClientConfig, ClientContext};
 use serde::Deserialize;
 
+use crate::parser::ServerConfig;
 use crate::producer::KafkaProducer;
-use crate::NexmarkConfig;
 
 // send one message per topic without replication
 const REPLICATION_FACTOR: i32 = 1;
+const KAFKA_GET_METADATA_TIMEOUT: Duration = Duration::from_secs(1);
 
 pub struct NexmarkSource {
     producers: Vec<KafkaProducer>,
@@ -30,7 +34,7 @@ pub struct EnvConfig {
 }
 
 impl NexmarkSource {
-    pub fn new(nexmark_config: &NexmarkConfig) -> Self {
+    pub fn new(nexmark_config: &ServerConfig) -> Self {
         dotenv().ok();
         let env_config = Arc::new(NexmarkSource::load_env());
         println!("Kafka address: {:?}", env_config.kafka_host);
@@ -123,6 +127,33 @@ impl NexmarkSource {
                 .await
                 .unwrap(),
         };
+    }
+
+    pub async fn check_topic_exist(&self) -> Result<()> {
+        let consumer: BaseConsumer = self
+            .client_config
+            .create_with_context(DefaultConsumerContext)
+            .unwrap();
+        if self.env_config.separate_topics {
+            consumer.fetch_metadata(
+                Some(self.env_config.person_topic.as_str()),
+                KAFKA_GET_METADATA_TIMEOUT,
+            )?;
+            consumer.fetch_metadata(
+                Some(self.env_config.auction_topic.as_str()),
+                KAFKA_GET_METADATA_TIMEOUT,
+            )?;
+            consumer.fetch_metadata(
+                Some(self.env_config.bid_topic.as_str()),
+                KAFKA_GET_METADATA_TIMEOUT,
+            )?;
+        } else {
+            consumer.fetch_metadata(
+                Some(self.env_config.base_topic.as_str()),
+                KAFKA_GET_METADATA_TIMEOUT,
+            )?;
+        }
+        Ok(())
     }
 
     pub fn get_producer_for_generator(&self, generator_num: usize) -> &KafkaProducer {

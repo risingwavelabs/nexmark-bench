@@ -57,6 +57,11 @@ You can also set the --max-events flag to 0, to make the number of events genera
 ## Dynamically adjusting event rate
 The event rate set via command line flags can be adjusted by sending an API request to ```http://127.0.0.1:8000/nexmark/qps``` (localhost running on port 8000). This dynamic QPS adjustment enables you to change the event-rate on the fly, and ramps up the production rate of all threads. To keep the QPS scaling as smooth as possible, this is done on a best effort basis for each thread, so the qps adjustment may take some time to reflect. Allow some time for the kafka buffer to be flushed as well, before the change in QPS is reflected. 
 
+Set QPS through `cURL` command:
+```
+curl -d '{"qps": {NEW_QPS}}' -H "Content-Type: application/json" -X POST http://localhost:8000/nexmark/qps
+```
+
 ## Running nexmark-server inside docker
 If you don't wish to run nexmark-server locally, you can also run nexmark-server inside docker. First, change the HOST in the .env file to "kafka1:19092", since we need the nexmark-server to connect to the kafka broker from inside docker. Then, run ``` make setup-docker-build ``` to simultaneously build the docker image for the nexmark-server and provision all the other infra. This may take a while, but should be faster when run again due to a caching layer. Once done, you should connect to the docker container using the following:
 

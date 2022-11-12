@@ -1,15 +1,19 @@
-use clap::Parser;
-use core::time;
-use nexmark_server::server::qps;
-use nexmark_server::NexmarkInterval;
-use nexmark_server::{
-    create_generators_for_config, generator::source::NexmarkSource, parser::NexmarkConfig,
-};
-use rand_chacha::ChaCha8Rng;
-use rocket::routes;
+use std::net::IpAddr;
+use std::net::Ipv4Addr;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+
+use clap::Parser;
+use core::time;
+use rocket::routes;
+use rocket::Config as RocketConfig;
+
+use nexmark_server::generator::source::NexmarkSource;
+use nexmark_server::parser::ServerConfig;
+use nexmark_server::run_generators;
+use nexmark_server::server::qps;
+use nexmark_server::NexmarkInterval;
 
 #[tokio::main]
 async fn main() {
@@ -19,7 +23,7 @@ async fn main() {
         r.store(false, Ordering::SeqCst);
     })
     .expect("Error setting Ctrl-C handler");
-    let conf = NexmarkConfig::parse();
+    let conf = ServerConfig::parse();
     let nexmark_source = Arc::new(NexmarkSource::new(&conf));
     let interval = Arc::new(NexmarkInterval::new(&conf));
     match &conf.create_topic {
@@ -32,7 +36,13 @@ async fn main() {
             })
             .unwrap(),
         false => {
-            let rocket = rocket::build()
+            let config = RocketConfig {
+                address:  IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
+                port: conf.listen_port,
+                ..Default::default()
+            };
+            nexmark_source.check_topic_exist().await.unwrap();
+            let rocket = rocket::custom(&config)
                 .manage(Arc::clone(&interval))
                 .manage(conf.clone())
                 .mount("/nexmark", routes![qps])
@@ -41,13 +51,7 @@ async fn main() {
                 .unwrap();
             let shutdown_handle = rocket.shutdown();
             tokio::spawn(async move { rocket.launch().await.unwrap() });
-            create_generators_for_config::<ChaCha8Rng>(
-                &conf,
-                &nexmark_source,
-                Arc::clone(&running),
-                Arc::clone(&interval),
-            )
-            .await;
+            run_generators(conf, nexmark_source, running.clone(), interval.clone()).await;
             shutdown_handle.notify();
         }
     }
