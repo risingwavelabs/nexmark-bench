@@ -1,24 +1,43 @@
-use std::sync::Arc;
-use std::time::{Duration, SystemTime};
-
+use generator::NexmarkGenerator;
+use generator::{config::GeneratorConfig, source::NexmarkSource};
+use parser::NexmarkConfig;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
+use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::Arc;
+use std::time::SystemTime;
 use tokio::time;
-
-use crate::generator::NexmarkGenerator;
-use crate::generator::{config::GeneratorConfig, source::NexmarkSource};
-use crate::parser::NexmarkConfig;
 
 pub mod generator;
 pub mod parser;
 pub mod producer;
+pub mod server;
 
 static SEED: u64 = 0;
+
+#[derive(Debug)]
+pub struct NexmarkInterval {
+    pub microseconds: AtomicU64,
+}
+
+impl NexmarkInterval {
+    pub fn new(config: &NexmarkConfig) -> Self {
+        Self {
+            microseconds: AtomicU64::new(GeneratorConfig::get_event_delay_microseconds(
+                config.event_rate,
+                config.num_event_generators,
+            )),
+        }
+    }
+}
 
 /// Creates generators from config options and sends events directly to kafka
 pub async fn create_generators_for_config<'a, T>(
     nexmark_config: &NexmarkConfig,
     nexmark_source: &Arc<NexmarkSource>,
+    running: Arc<AtomicBool>,
+    nexmark_interval: Arc<NexmarkInterval>,
 ) where
     T: Rng + std::marker::Send,
 {
@@ -34,18 +53,38 @@ pub async fn create_generators_for_config<'a, T>(
             wallclock_base_time,
             0,
             generator_num,
+            Arc::clone(&nexmark_interval),
         );
+        let running = Arc::clone(&running);
         let source = Arc::clone(nexmark_source);
+        let atomic_interval_supplied = Arc::clone(&nexmark_interval);
         let jh = tokio::spawn(async move {
             let rng = ChaCha8Rng::seed_from_u64(SEED);
-            let delay = generator_config.inter_event_delay_microseconds;
-            let mut interval = time::interval(Duration::from_micros(
-                delay as u64 * generator_config.nexmark_config.num_event_generators as u64,
-            ));
             let mut generator = NexmarkGenerator::new(generator_config.clone(), rng, source);
+            let mut interval = time::interval(time::Duration::from_micros(
+                atomic_interval_supplied
+                    .microseconds
+                    .load(Ordering::Relaxed),
+            ));
             loop {
                 interval.tick().await;
                 let next_event = generator.next_event();
+                // if ctrc has been received, terminate the thread
+                if !running.load(Ordering::SeqCst) {
+                    break;
+                }
+                // if the interval has been chanegd by a POST to /nexmark/qps, change interval in generator
+                if interval.period().as_micros() as u64
+                    != atomic_interval_supplied
+                        .microseconds
+                        .load(Ordering::Relaxed)
+                {
+                    interval = time::interval(time::Duration::from_micros(
+                        atomic_interval_supplied
+                            .microseconds
+                            .load(Ordering::Relaxed),
+                    ));
+                }
                 match &next_event {
                     Ok(e) => match e {
                         Some(next_e) => {

@@ -1,4 +1,6 @@
-use crate::parser::NexmarkConfig;
+use std::sync::Arc;
+
+use crate::{parser::NexmarkConfig, NexmarkInterval};
 
 pub const FIRST_PERSON_ID: usize = 1000;
 pub const FIRST_AUCTION_ID: usize = 1000;
@@ -11,7 +13,7 @@ pub struct GeneratorConfig {
     pub first_event_id: u64,
     pub max_events: u64,
     pub first_event_number: usize,
-    pub inter_event_delay_microseconds: f64,
+    pub inter_event_delay: Arc<NexmarkInterval>,
 }
 
 impl GeneratorConfig {
@@ -20,8 +22,8 @@ impl GeneratorConfig {
         base_time: u64,
         first_event_id: u64,
         first_event_number: usize,
+        inter_event_delay: Arc<NexmarkInterval>,
     ) -> Self {
-        let inter_event_delay_microseconds = 1_000_000.0 / (nexmark_config.event_rate as f64);
         let max_events = match nexmark_config.max_events {
             0 => u64::MAX,
             _ => nexmark_config.max_events,
@@ -32,8 +34,12 @@ impl GeneratorConfig {
             first_event_id,
             first_event_number,
             max_events,
-            inter_event_delay_microseconds,
+            inter_event_delay,
         }
+    }
+
+    pub fn get_event_delay_microseconds(event_rate: usize, num_generators: usize) -> u64 {
+        1_000_000.0 as u64 * num_generators as u64 / event_rate as u64
     }
 
     pub fn next_event_number(&self, num_events: u64) -> u64 {
@@ -42,6 +48,12 @@ impl GeneratorConfig {
     }
 
     pub fn timestamp_for_event(&self, event_number: u64) -> u64 {
-        self.base_time + (self.inter_event_delay_microseconds * event_number as f64) as u64 / 1000
+        self.base_time
+            + (self
+                .inter_event_delay
+                .microseconds
+                .load(std::sync::atomic::Ordering::Relaxed)
+                * event_number)
+                / 1000
     }
 }
