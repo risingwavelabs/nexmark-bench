@@ -15,7 +15,7 @@ pub mod producer;
 pub mod server;
 
 // check the interval and refresh after these number of events have gone by
-const INTERVAL_CHECK_EVENT_FREQUENCY: u64 = 10000;
+const INTERVAL_CHECK_EVENT_FREQUENCY: u64 = 100;
 
 // log to stdout after these number of events have gone by
 const PRINT_FREQUENCY: u64 = 10000;
