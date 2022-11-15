@@ -3,7 +3,9 @@ use std::sync::{atomic::Ordering, Arc};
 use rocket::{post, response::status, serde::json::Json, State};
 use serde::Deserialize;
 
-use crate::{generator::config::GeneratorConfig, parser::NexmarkConfig, NexmarkInterval};
+use crate::generator::config::GeneratorConfig;
+use crate::parser::ServerConfig;
+use crate::NexmarkInterval;
 
 #[derive(Deserialize)]
 #[serde(crate = "rocket::serde")]
@@ -15,7 +17,7 @@ pub struct QPSHandler {
 pub fn qps(
     qps_handler: Json<QPSHandler>,
     interval_state: &State<Arc<NexmarkInterval>>,
-    conf_state: &State<NexmarkConfig>,
+    conf_state: &State<ServerConfig>,
 ) -> status::Accepted<std::string::String> {
     interval_state.microseconds.store(
         GeneratorConfig::get_event_delay_microseconds(
