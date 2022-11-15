@@ -8,7 +8,7 @@ pub mod source;
 pub struct NexmarkGenerator {
     config: GeneratorConfig,
     local_events_so_far: u64,
-    index: u64,
+    pub index: u64,
 }
 
 impl NexmarkGenerator {
@@ -21,12 +21,16 @@ impl NexmarkGenerator {
     }
 
     pub fn next_event(&mut self) -> Option<Event> {
-        let new_event_id = self.local_events_so_far * self.config.generator_num + self.index;
+        let new_event_id = self.get_next_event_id();
         if new_event_id >= self.config.max_events {
             return None;
         }
         let (event, _) = Event::new(new_event_id as usize, &self.config.nexmark_config, 0);
         self.local_events_so_far += 1;
         Some(event)
+    }
+
+    pub fn get_next_event_id(&self) -> u64 {
+        self.local_events_so_far * self.config.generator_num + self.index
     }
 }

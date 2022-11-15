@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 
 use parser::ServerConfig;
-use tokio::time;
+use tokio::time::{self, Interval};
 
 use crate::generator::NexmarkGenerator;
 use crate::generator::{config::GeneratorConfig, source::NexmarkSource};
@@ -14,8 +14,11 @@ pub mod parser;
 pub mod producer;
 pub mod server;
 
-const INTERVAL_CHECK_FREQUENCY: f64 = 10.0;
-const PRINT_FREQUENCY: f64 = 0.2;
+// check the interval and refresh after these number of events have gone by
+const INTERVAL_CHECK_EVENT_FREQUENCY: u64 = 10000;
+
+// log to stdout after these number of events have gone by
+const PRINT_FREQUENCY: u64 = 10000;
 
 #[derive(Debug)]
 pub struct NexmarkInterval {
@@ -31,9 +34,40 @@ impl NexmarkInterval {
             )),
         }
     }
+
+    pub fn get_interval(&self) -> Interval {
+        time::interval(time::Duration::from_micros(
+            self.microseconds.load(Ordering::Relaxed),
+        ))
+    }
+
+    // ignore an unnecessary interval allocation if the intervals are the same
+    pub fn refresh_interval(&self, interval: &mut Interval) {
+        if interval.period().as_micros() as u64 == self.microseconds.load(Ordering::Relaxed) {
+            return;
+        }
+        *interval = time::interval(time::Duration::from_micros(
+            self.microseconds.load(Ordering::Relaxed),
+        ));
+    }
 }
 
-/// Creates generators from config options and sends events directly to kafka
+pub struct Logger {}
+impl Logger {
+    pub fn new() -> Self {
+        Self {}
+    }
+    pub fn log_event_rate(&self, system_time: SystemTime) {
+        let elapse = SystemTime::elapsed(&system_time).unwrap();
+        let rate = PRINT_FREQUENCY as f64 / elapse.as_micros() as f64 * 1_000_000_f64;
+        println!(
+            "Produced {} events in {:?}, generate_rate: {} row/s",
+            PRINT_FREQUENCY, elapse, rate
+        );
+    }
+}
+
+// Creates generators from config options and sends events directly to kafka
 pub async fn run_generators(
     server_config: ServerConfig,
     nexmark_source: Arc<NexmarkSource>,
@@ -51,67 +85,23 @@ pub async fn run_generators(
         wallclock_base_time,
         server_config.num_event_generators as u64,
     );
-
     for generator_idx in 0..server_config.num_event_generators {
         let generator_config = generator_config.clone();
         let running = running.clone();
         let source = nexmark_source.clone();
-        let atomic_interval_supplied = nexmark_interval.clone();
-
+        let nexmark_interval = nexmark_interval.clone();
         let handler = tokio::spawn(async move {
             let mut generator = NexmarkGenerator::new(generator_config, generator_idx as u64);
-            let mut interval = time::interval(time::Duration::from_micros(
-                atomic_interval_supplied
-                    .microseconds
-                    .load(Ordering::Relaxed),
-            ));
-            let mut new_interval = atomic_interval_supplied
-                .microseconds
-                .load(Ordering::Relaxed);
-
-            let mut loop_idx = 0;
-            let mut check_idx =
-                ((1_000_000 / (new_interval + 1)) as f64 / INTERVAL_CHECK_FREQUENCY).ceil() as u64;
-            let mut print_idx =
-                ((1_000_000 / (new_interval + 1)) as f64 / PRINT_FREQUENCY).ceil() as u64;
-            let mut timestamp = SystemTime::now();
-
+            let mut interval = nexmark_interval.get_interval();
             loop {
                 interval.tick().await;
-                loop_idx += 1;
-                // if ctrc has been received, terminate the thread
                 if !running.load(Ordering::SeqCst) {
                     break;
                 }
-
-                if loop_idx % check_idx == 0 {
-                    // if the interval has been chanegd by a POST to /nexmark/qps, change interval in generator
-                    new_interval = atomic_interval_supplied
-                        .microseconds
-                        .load(Ordering::Relaxed);
-                    if interval.period().as_micros() as u64 != new_interval {
-                        interval = time::interval(time::Duration::from_micros(new_interval));
-                        check_idx = ((1_000_000 / (new_interval + 1)) as f64
-                            / INTERVAL_CHECK_FREQUENCY)
-                            .ceil() as u64;
-                        print_idx = ((1_000_000 / (new_interval + 1)) as f64
-                            / PRINT_FREQUENCY)
-                            .ceil() as u64;
-                    }
+                if should_update_interval(&generator) {
+                    nexmark_interval.refresh_interval(&mut interval);
                 }
-
-                if loop_idx % print_idx == 0 {
-                    let elapse = SystemTime::elapsed(&timestamp).unwrap();
-                    let rate = print_idx as f64 / elapse.as_micros() as f64 * 1_000_000_f64;
-                    println!(
-                        "Producer_{} produce {} event in {:?}, generate_rate: {} row/s",
-                        generator_idx, print_idx, elapse, rate
-                    );
-                    timestamp = SystemTime::now();
-                }
-
                 let next_event = generator.next_event();
-
                 match next_event {
                     Some(next_e) => {
                         if let Err(err) = source
@@ -140,4 +130,9 @@ pub async fn run_generators(
         server_config.max_events,
         SystemTime::elapsed(&start_time).unwrap()
     );
+}
+
+// checks whether interval should be updated, by ALL threads
+fn should_update_interval(generator: &NexmarkGenerator) -> bool {
+    generator.get_next_event_id() % INTERVAL_CHECK_EVENT_FREQUENCY == generator.index
 }
