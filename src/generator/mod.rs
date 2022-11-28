@@ -21,12 +21,23 @@ impl NexmarkGenerator {
     }
 
     pub fn next_event(&mut self) -> Option<Event> {
-        let new_event_id = self.local_events_so_far * self.config.generator_num + self.index;
-        if new_event_id >= self.config.max_events {
-            return None;
+        loop {
+            let new_event_id = self.local_events_so_far * self.config.generator_num + self.index;
+            if new_event_id >= self.config.max_events {
+                return None;
+            }
+            if let Some((event, _)) = Event::new(
+                new_event_id as usize,
+                &self.config.nexmark_config,
+                0,
+                self.config.skip_person,
+                self.config.skip_auction,
+                self.config.skip_bid,
+            ) {
+                self.local_events_so_far += 1;
+                return Some(event);
+            }
+            self.local_events_so_far += 1;
         }
-        let (event, _) = Event::new(new_event_id as usize, &self.config.nexmark_config, 0);
-        self.local_events_so_far += 1;
-        Some(event)
     }
 }

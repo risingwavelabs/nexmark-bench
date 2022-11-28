@@ -35,8 +35,38 @@ impl Event {
         events_so_far: usize,
         nex: &NexmarkConfig,
         wall_clock_base_time: usize,
-    ) -> (Event, usize) {
+        skip_person: bool,
+        skip_auction: bool,
+        skip_bid: bool,
+    ) -> Option<(Event, usize)> {
         let rem = nex.next_adjusted_event(events_so_far) % nex.proportion_denominator;
+        if rem < nex.person_proportion {
+            if skip_person {
+                return None;
+            }
+        } else if rem < nex.person_proportion + nex.auction_proportion {
+            if skip_auction {
+                return None;
+            }
+        } else {
+            if skip_bid {
+                return None;
+            }
+        };
+        Some(Self::inner_new(
+            rem,
+            events_so_far,
+            nex,
+            wall_clock_base_time,
+        ))
+    }
+
+    fn inner_new(
+        rem: usize,
+        events_so_far: usize,
+        nex: &NexmarkConfig,
+        wall_clock_base_time: usize,
+    ) -> (Event, usize) {
         let timestamp = nex.event_timestamp(nex.next_adjusted_event(events_so_far));
         let new_wall_clock_base_time = timestamp - nex.base_time + wall_clock_base_time;
         let id = nex.first_event_id + nex.next_adjusted_event(events_so_far);

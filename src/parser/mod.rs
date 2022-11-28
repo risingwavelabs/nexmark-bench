@@ -17,6 +17,10 @@ pub struct ServerConfig {
     #[clap(long, default_value = "8000")]
     pub listen_port: u16,
 
+    /// The event type to skip, e.g. "auction,person" means only produce bid events.
+    #[clap(long, default_value = "")]
+    pub skip_event_types: String,
+
     #[clap(long, short, action)]
     pub create_topic: bool,
 }
@@ -28,6 +32,7 @@ impl Default for ServerConfig {
             create_topic: false,
             event_rate: 1000,
             num_event_generators: 3,
+            skip_event_types: String::from(""),
             listen_port: 8000,
         }
     }
