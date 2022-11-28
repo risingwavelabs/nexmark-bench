@@ -54,6 +54,9 @@ Delivered 400000 events in 1.015285s
 
 You can also set the --max-events flag to 0, to make the number of events generated unlimited.
 
+To skip tables, use flag `--skip-event-types`. For `--skip-event-types="person"`, the server will not generate events for the `person` tables.
+The ratio between bid and auction will keep unchanged and the event rate will be the event rates' sum of `auction` table and `bid` table. `--skip-event-types="person,bid"` means only produce the auction events.
+
 ## Dynamically adjusting event rate
 The event rate set via command line flags can be adjusted by sending an API request to ```http://127.0.0.1:8000/nexmark/qps``` (localhost running on port 8000). This dynamic QPS adjustment enables you to change the event-rate on the fly, and ramps up the production rate of all threads. To keep the QPS scaling as smooth as possible, this is done on a best effort basis for each thread, so the qps adjustment may take some time to reflect. Allow some time for the kafka buffer to be flushed as well, before the change in QPS is reflected. 
 

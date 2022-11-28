@@ -50,6 +50,7 @@ pub async fn run_generators(
         server_config.max_events,
         wallclock_base_time,
         server_config.num_event_generators as u64,
+        server_config.skip_event_types,
     );
 
     for generator_idx in 0..server_config.num_event_generators {
@@ -94,8 +95,7 @@ pub async fn run_generators(
                         check_idx = ((1_000_000 / (new_interval + 1)) as f64
                             / INTERVAL_CHECK_FREQUENCY)
                             .ceil() as u64;
-                        print_idx = ((1_000_000 / (new_interval + 1)) as f64
-                            / PRINT_FREQUENCY)
+                        print_idx = ((1_000_000 / (new_interval + 1)) as f64 / PRINT_FREQUENCY)
                             .ceil() as u64;
                     }
                 }

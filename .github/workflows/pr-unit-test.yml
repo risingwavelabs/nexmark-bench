@@ -26,7 +26,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  orchestrator-test:
+  nexmark-server-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -49,7 +49,7 @@ jobs:
         run: |
           # If new CI checks are added, the one with `--locked` must be run first.
           make rust_clippy_check_locked
-      - name: Build Orchestrator
+      - name: Build Nexmark Server
         run: make rust_build
       - name: Unit Test
         run: make rust_test

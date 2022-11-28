@@ -7,21 +7,35 @@ pub struct GeneratorConfig {
     pub base_time: u64,
     pub max_events: u64,
     pub generator_num: u64,
+    pub skip_person: bool,
+    pub skip_auction: bool,
+    pub skip_bid: bool,
 }
 
 impl GeneratorConfig {
-    pub fn new(max_events: u64, base_time: u64, generator_num: u64) -> Self {
+    pub fn new(
+        max_events: u64,
+        base_time: u64,
+        generator_num: u64,
+        skip_event_types: String,
+    ) -> Self {
         let properties = NexmarkProperties::default();
         let config = NexmarkConfig::from(properties).unwrap();
         let max_events = match max_events {
             0 => u64::MAX,
             _ => max_events,
         };
+        let skip_person = skip_event_types.contains("person");
+        let skip_auction = skip_event_types.contains("auction");
+        let skip_bid = skip_event_types.contains("bid");
         Self {
             nexmark_config: config,
             base_time,
             generator_num,
             max_events,
+            skip_person,
+            skip_auction,
+            skip_bid,
         }
     }
 
