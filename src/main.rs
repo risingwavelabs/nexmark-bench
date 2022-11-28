@@ -37,7 +37,7 @@ async fn main() {
             .unwrap(),
         false => {
             let config = RocketConfig {
-                address:  IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
+                address: IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
                 port: conf.listen_port,
                 ..Default::default()
             };
