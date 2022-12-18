@@ -85,6 +85,7 @@ pub async fn run_generators(
                     break;
                 }
 
+                // update interval for controlling generating rate
                 if loop_idx % check_idx == 0 {
                     // if the interval has been chanegd by a POST to /nexmark/qps, change interval in generator
                     new_interval = atomic_interval_supplied
@@ -100,6 +101,7 @@ pub async fn run_generators(
                     }
                 }
 
+                // print real-time rate information
                 if loop_idx % print_idx == 0 {
                     let elapse = SystemTime::elapsed(&timestamp).unwrap();
                     let rate = print_idx as f64 / elapse.as_micros() as f64 * 1_000_000_f64;
@@ -117,9 +119,9 @@ pub async fn run_generators(
                         if let Err(err) = source
                             .get_producer_for_generator(generator_idx)
                             .send_data_to_topic(&next_e)
+                            .await
                         {
                             eprintln!("Error in sending event {:?}: {}", &next_e, &err);
-                            continue;
                         }
                     }
                     None => break,
