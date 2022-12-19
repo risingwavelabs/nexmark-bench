@@ -42,8 +42,8 @@ impl KafkaProducer {
     pub async fn send_data_to_topic(&self, data: &Event) -> Result<()> {
         let payload = data.to_json();
 
-        let mut timeout_ms = RETRY_BASE_INTERVAL_US;
-        while timeout_ms <= RETRY_MAX_INTERVAL_US {
+        let mut timeout_us = RETRY_BASE_INTERVAL_US;
+        while timeout_us <= RETRY_MAX_INTERVAL_US {
             let res = self.producer.send(
                 BaseRecord::<std::string::String, std::string::String>::to(self.choose_topic(data))
                     .key(&self.key)
@@ -54,11 +54,11 @@ impl KafkaProducer {
             if let Err((e, _)) = res {
                 if let KafkaError::MessageProduction(RDKafkaError::QueueFull) = e {
                     println!(
-                        "[Warning] failed to send message to kafka, message: {:?}, err: {:?}, timeout_ms for retry: {:?}",
-                        payload, e, timeout_ms
+                        "[Warning] failed to send message to kafka, message: {:?}, err: {:?}, timeout_us for retry: {:?}",
+                        payload, e, timeout_us
                     );
-                    tokio::time::sleep(Duration::from_micros(timeout_ms)).await;
-                    timeout_ms *= 2;
+                    tokio::time::sleep(Duration::from_micros(timeout_us)).await;
+                    timeout_us *= 2;
                     continue;
                 } else {
                     return Err(anyhow::Error::new(e));
