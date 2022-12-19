@@ -1,16 +1,24 @@
 use std::sync::Arc;
+use std::time::Duration;
 
+use anyhow::anyhow;
 use anyhow::Result;
+use rdkafka::error::KafkaError;
 use rdkafka::producer::{BaseRecord, ProducerContext, ThreadedProducer};
+use rdkafka::types::RDKafkaError;
 use rdkafka::{ClientConfig, ClientContext, Message};
 
 use crate::generator::nexmark::event::Event;
 use crate::generator::source::EnvConfig;
 
+const RETRY_BASE_INTERVAL_US: u64 = 100;
+const RETRY_MAX_INTERVAL_US: u64 = 1000000;
+
 pub struct KafkaProducer {
     pub producer: ThreadedProducer<ProduceCallbackLogger>,
     env_config: Arc<EnvConfig>,
     generator_num: usize,
+    key: String,
 }
 
 impl KafkaProducer {
@@ -22,23 +30,44 @@ impl KafkaProducer {
         let producer: ThreadedProducer<ProduceCallbackLogger> = client_config
             .create_with_context(ProduceCallbackLogger {})
             .expect("Failed to create kafka producer");
+        let key = format!("event-{}", generator_num);
         Self {
             producer,
             env_config,
             generator_num,
+            key,
         }
     }
 
-    pub fn send_data_to_topic(&self, data: &Event) -> Result<()> {
+    pub async fn send_data_to_topic(&self, data: &Event) -> Result<()> {
         let payload = data.to_json();
-        self.producer
-            .send(
+
+        let mut timeout_ms = RETRY_BASE_INTERVAL_US;
+        while timeout_ms <= RETRY_MAX_INTERVAL_US {
+            let res = self.producer.send(
                 BaseRecord::<std::string::String, std::string::String>::to(self.choose_topic(data))
-                    .key(&format!("event-{}", &self.generator_num))
+                    .key(&self.key)
                     .partition(self.choose_partition())
                     .payload(&payload),
-            )
-            .map_err(|e| anyhow::Error::new(e.0))
+            );
+
+            if let Err((e, _)) = res {
+                if let KafkaError::MessageProduction(RDKafkaError::QueueFull) = e {
+                    println!(
+                        "[Warning] failed to send message to kafka, message: {:?}, err: {:?}, timeout_ms for retry: {:?}",
+                        payload, e, timeout_ms
+                    );
+                    tokio::time::sleep(Duration::from_micros(timeout_ms)).await;
+                    timeout_ms *= 2;
+                    continue;
+                } else {
+                    return Err(anyhow::Error::new(e));
+                }
+            } else {
+                return Ok(());
+            }
+        }
+        Err(anyhow!("send_data_to_topic Timeout"))
     }
 
     fn choose_partition(&self) -> i32 {
