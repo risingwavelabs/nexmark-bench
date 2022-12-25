@@ -10,11 +10,43 @@ use crate::generator::nexmark::utils::{milli_ts_to_timestamp_string, NexmarkRng}
 
 type Id = usize;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum EventType {
-    Person,
-    Auction,
-    Bid,
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub struct CombinedEvent {
+    event_type: u64,
+    /// The Person event
+    person: Option<Person>,
+    /// The Auction event.
+    auction: Option<Auction>,
+    /// The Bid event.
+    bid: Option<Bid>,
+}
+
+impl CombinedEvent {
+    fn new(
+        event_type: u64,
+        person: Option<Person>,
+        auction: Option<Auction>,
+        bid: Option<Bid>,
+    ) -> Self {
+        Self {
+            event_type,
+            person,
+            auction,
+            bid,
+        }
+    }
+
+    pub fn person(person: Person) -> Self {
+        Self::new(0, Some(person), None, None)
+    }
+
+    pub fn auction(auction: Auction) -> Self {
+        Self::new(1, None, Some(auction), None)
+    }
+
+    pub fn bid(bid: Bid) -> Self {
+        Self::new(2, None, None, Some(bid))
+    }
 }
 
 /// The `Nexmark` Event, including `Person`, `Auction`, and `Bid`.
@@ -79,11 +111,20 @@ impl Event {
         (event, new_wall_clock_base_time)
     }
 
-    pub fn to_json(&self) -> String {
-        match self {
-            Event::Person(p) => serde_json::to_string(p).unwrap(),
-            Event::Auction(a) => serde_json::to_string(a).unwrap(),
-            Event::Bid(b) => serde_json::to_string(b).unwrap(),
+    pub fn to_json(self, combine_event: bool) -> String {
+        if combine_event {
+            let combined_event = match self {
+                Event::Person(p) => CombinedEvent::person(p),
+                Event::Auction(a) => CombinedEvent::auction(a),
+                Event::Bid(b) => CombinedEvent::bid(b),
+            };
+            serde_json::to_string(&combined_event).unwrap()
+        } else {
+            match self {
+                Event::Person(p) => serde_json::to_string(&p).unwrap(),
+                Event::Auction(a) => serde_json::to_string(&a).unwrap(),
+                Event::Bid(b) => serde_json::to_string(&b).unwrap(),
+            }
         }
     }
 }
