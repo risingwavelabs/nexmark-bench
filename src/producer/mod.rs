@@ -39,23 +39,21 @@ impl KafkaProducer {
         }
     }
 
-    pub async fn send_data_to_topic(&self, data: &Event) -> Result<()> {
-        let payload = data.to_json();
-
+    pub async fn send_data_to_topic(&self, data: &String, topic: &str) -> Result<()> {
         let mut timeout_us = RETRY_BASE_INTERVAL_US;
         while timeout_us <= RETRY_MAX_INTERVAL_US {
             let res = self.producer.send(
-                BaseRecord::<std::string::String, std::string::String>::to(self.choose_topic(data))
+                BaseRecord::<std::string::String, std::string::String>::to(topic)
                     .key(&self.key)
                     .partition(self.choose_partition())
-                    .payload(&payload),
+                    .payload(data),
             );
 
             if let Err((e, _)) = res {
                 if let KafkaError::MessageProduction(RDKafkaError::QueueFull) = e {
                     println!(
                         "[Warning] failed to send message to kafka, message: {:?}, err: {:?}, timeout_us for retry: {:?}",
-                        payload, e, timeout_us
+                        data, e, timeout_us
                     );
                     tokio::time::sleep(Duration::from_micros(timeout_us)).await;
                     timeout_us *= 2;
@@ -74,7 +72,7 @@ impl KafkaProducer {
         self.generator_num as i32 % self.env_config.num_partitions
     }
 
-    fn choose_topic(&self, data: &Event) -> &str {
+    pub fn choose_topic(&self, data: &Event) -> &str {
         if self.env_config.separate_topics {
             match *data {
                 Event::Person(_) => &self.env_config.person_topic,
@@ -84,6 +82,10 @@ impl KafkaProducer {
         } else {
             &self.env_config.base_topic
         }
+    }
+
+    pub fn serialize_event(&self, event: Event) -> String {
+        event.to_json(!self.env_config.separate_topics)
     }
 }
 

@@ -116,12 +116,11 @@ pub async fn run_generators(
 
                 match next_event {
                     Some(next_e) => {
-                        if let Err(err) = source
-                            .get_producer_for_generator(generator_idx)
-                            .send_data_to_topic(&next_e)
-                            .await
-                        {
-                            eprintln!("Error in sending event {:?}: {}", &next_e, &err);
+                        let producer = source.get_producer_for_generator(generator_idx);
+                        let topic = producer.choose_topic(&next_e);
+                        let payload = producer.serialize_event(next_e);
+                        if let Err(err) = producer.send_data_to_topic(&payload, topic).await {
+                            eprintln!("Error in sending event {:?}: {}", payload, &err);
                         }
                     }
                     None => break,
