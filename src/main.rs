@@ -17,6 +17,8 @@ use nexmark_server::NexmarkInterval;
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
     ctrlc::set_handler(move || {

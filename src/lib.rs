@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Arc;
 use std::time::SystemTime;
 
+use log::{error, info};
 use parser::ServerConfig;
 use tokio::time;
 
@@ -105,7 +106,7 @@ pub async fn run_generators(
                 if loop_idx % print_idx == 0 {
                     let elapse = SystemTime::elapsed(&timestamp).unwrap();
                     let rate = print_idx as f64 / elapse.as_micros() as f64 * 1_000_000_f64;
-                    println!(
+                    info!(
                         "Producer_{} produce {} event in {:?}, generate_rate: {} row/s",
                         generator_idx, print_idx, elapse, rate
                     );
@@ -120,7 +121,7 @@ pub async fn run_generators(
                         let topic = producer.choose_topic(&next_e);
                         let payload = producer.serialize_event(next_e);
                         if let Err(err) = producer.send_data_to_topic(&payload, topic).await {
-                            eprintln!("Error in sending event {:?}: {}", payload, &err);
+                            error!("Error in sending event {:?}: {}", payload, &err);
                         }
                     }
                     None => break,
@@ -136,7 +137,7 @@ pub async fn run_generators(
     for handler in handlers.into_iter() {
         handler.await.unwrap();
     }
-    println!(
+    info!(
         "Delivered {} events in {:?}",
         server_config.max_events,
         SystemTime::elapsed(&start_time).unwrap()
