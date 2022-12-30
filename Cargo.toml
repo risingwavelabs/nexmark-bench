@@ -12,9 +12,11 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 clap = { version = "4.0.16", features = ["derive"] }
 ctrlc = { version = "3.0", features = ["termination"] }
 dotenv = "0.15.0"
+env_logger = "0.9"
 envy = "0.4"
 futures = "0.3"
 kafka = "0.9"
+log = "0.4"
 native-tls = "0.2.4"
 openssl = "0.10.30"
 rand = { version = "0.8", features = ["small_rng"] }

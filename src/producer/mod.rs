@@ -3,6 +3,8 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 use anyhow::Result;
+use log::info;
+use log::warn;
 use rdkafka::error::KafkaError;
 use rdkafka::producer::{BaseRecord, ProducerContext, ThreadedProducer};
 use rdkafka::types::RDKafkaError;
@@ -11,7 +13,7 @@ use rdkafka::{ClientConfig, ClientContext, Message};
 use crate::generator::nexmark::event::Event;
 use crate::generator::source::EnvConfig;
 
-const RETRY_BASE_INTERVAL_US: u64 = 100;
+const RETRY_BASE_INTERVAL_US: u64 = 1000;
 const RETRY_MAX_INTERVAL_US: u64 = 1000000;
 
 pub struct KafkaProducer {
@@ -51,7 +53,7 @@ impl KafkaProducer {
 
             if let Err((e, _)) = res {
                 if let KafkaError::MessageProduction(RDKafkaError::QueueFull) = e {
-                    println!(
+                    warn!(
                         "[Warning] failed to send message to kafka, message: {:?}, err: {:?}, timeout_us for retry: {:?}",
                         data, e, timeout_us
                     );
@@ -101,7 +103,7 @@ impl ProducerContext for ProduceCallbackLogger {
     ) {
         if let Err(producer_err) = delivery_result {
             let key: &str = producer_err.1.key_view().unwrap().unwrap();
-            println!(
+            info!(
                 "failed to produce message with key {} - {}",
                 key, producer_err.0,
             );

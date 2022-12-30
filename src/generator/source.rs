@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use dotenv::dotenv;
+use log::info;
 use rdkafka::admin::{AdminClient, AdminOptions, NewTopic};
 use rdkafka::config::FromClientConfig;
 use rdkafka::consumer::{BaseConsumer, Consumer, DefaultConsumerContext};
@@ -37,7 +38,7 @@ impl NexmarkSource {
     pub fn new(nexmark_config: &ServerConfig) -> Self {
         dotenv().ok();
         let env_config = Arc::new(NexmarkSource::load_env());
-        println!("Kafka address: {:?}", env_config.kafka_host);
+        info!("Kafka address: {:?}", env_config.kafka_host);
         let client_config = NexmarkSource::generate_client_config(&env_config.kafka_host);
         let producers: Vec<KafkaProducer> = (0..nexmark_config.num_event_generators)
             .map(|i| KafkaProducer::new(&client_config, Arc::clone(&env_config), i))
@@ -71,7 +72,7 @@ impl NexmarkSource {
     }
 
     async fn delete_topics<T: ClientContext>(&self, admin_client: &AdminClient<T>) {
-        println!("Cleaning up...");
+        info!("Cleaning up...");
         admin_client
             .delete_topics(
                 &[
@@ -90,7 +91,7 @@ impl NexmarkSource {
     pub async fn create_topic(&self) {
         let admin_client = AdminClient::from_config(&self.client_config).unwrap();
         self.delete_topics(&admin_client).await;
-        println!("Creating...");
+        info!("Creating...");
         match self.env_config.separate_topics {
             true => admin_client
                 .create_topics(

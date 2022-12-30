@@ -31,5 +31,6 @@ ENV BID_TOPIC="nexmark-bid"
 ENV PERSON_TOPIC="nexmark-person"
 ENV NUM_PARTITIONS=3
 ENV SEPARATE_TOPICS=true
+ENV RUST_LOG="nexmark_server=info"
 
 ENTRYPOINT [ "/nexmark-bench/bin/nexmark-server" ]
