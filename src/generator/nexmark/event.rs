@@ -99,14 +99,13 @@ impl Event {
     ) -> (Event, usize) {
         let timestamp = nex.event_timestamp(nex.next_adjusted_event(events_so_far));
         let new_wall_clock_base_time = timestamp - nex.base_time + wall_clock_base_time;
-        let id = nex.first_event_id + nex.next_adjusted_event(events_so_far);
-        let mut rng = SmallRng::seed_from_u64(id as u64);
+        let event_id = nex.first_event_id + nex.next_adjusted_event(events_so_far);
         let event = if rem < nex.person_proportion {
-            Event::Person(Person::new(id, timestamp, &mut rng, nex))
+            Event::Person(Person::new(event_id, timestamp, nex))
         } else if rem < nex.person_proportion + nex.auction_proportion {
-            Event::Auction(Auction::new(events_so_far, id, timestamp, &mut rng, nex))
+            Event::Auction(Auction::new(events_so_far, event_id, timestamp, nex))
         } else {
-            Event::Bid(Bid::new(id, timestamp, &mut rng, nex))
+            Event::Bid(Bid::new(event_id, timestamp, nex))
         };
         (event, new_wall_clock_base_time)
     }
@@ -153,8 +152,9 @@ pub struct Person {
 
 impl Person {
     /// Creates a new `Person` event.
-    fn new(id: usize, time: usize, rng: &mut SmallRng, nex: &NexmarkConfig) -> Self {
-        let id = Self::last_id(id, nex) + nex.first_person_id;
+    fn new(event_id: usize, time: usize, nex: &NexmarkConfig) -> Self {
+        let rng = &mut SmallRng::seed_from_u64(event_id as u64);
+        let id = Self::last_id(event_id, nex) + nex.first_person_id;
         let name = format!(
             "{} {}",
             nex.first_names.choose(rng).unwrap(),
@@ -184,15 +184,15 @@ impl Person {
         }
     }
 
-    fn next_id(id: usize, rng: &mut SmallRng, nex: &NexmarkConfig) -> Id {
-        let people = Self::last_id(id, nex) + 1;
+    fn next_id(event_id: usize, rng: &mut SmallRng, nex: &NexmarkConfig) -> Id {
+        let people = Self::last_id(event_id, nex) + 1;
         let active = min(people, nex.active_people);
         people - active + rng.gen_range(0..active + nex.person_id_lead)
     }
 
-    fn last_id(id: usize, nex: &NexmarkConfig) -> Id {
-        let epoch = id / nex.proportion_denominator;
-        let mut offset = id % nex.proportion_denominator;
+    fn last_id(event_id: usize, nex: &NexmarkConfig) -> Id {
+        let epoch = event_id / nex.proportion_denominator;
+        let mut offset = event_id % nex.proportion_denominator;
         if nex.person_proportion <= offset {
             offset = nex.person_proportion - 1;
         }
@@ -226,14 +226,9 @@ pub struct Auction {
 }
 
 impl Auction {
-    fn new(
-        events_so_far: usize,
-        id: usize,
-        time: usize,
-        rng: &mut SmallRng,
-        nex: &NexmarkConfig,
-    ) -> Self {
-        let id = Self::last_id(id, nex) + nex.first_auction_id;
+    fn new(events_so_far: usize, event_id: usize, time: usize, nex: &NexmarkConfig) -> Self {
+        let rng = &mut SmallRng::seed_from_u64(event_id as u64);
+        let id = Self::last_id(event_id, nex) + nex.first_auction_id;
         let item_name = rng.gen_string(20);
         let description = rng.gen_string(100);
         let initial_bid = rng.gen_price();
@@ -243,9 +238,9 @@ impl Auction {
         let expires =
             milli_ts_to_timestamp_string(time + Self::next_length(events_so_far, rng, time, nex));
         let mut seller = if rng.gen_range(0..nex.hot_seller_ratio) > 0 {
-            (Person::last_id(id, nex) / nex.hot_seller_ratio_2) * nex.hot_seller_ratio_2
+            (Person::last_id(event_id, nex) / nex.hot_seller_ratio_2) * nex.hot_seller_ratio_2
         } else {
-            Person::next_id(id, rng, nex)
+            Person::next_id(event_id, rng, nex)
         };
         seller += nex.first_person_id;
         let category = nex.first_category_id + rng.gen_range(0..nex.num_categories);
@@ -267,8 +262,8 @@ impl Auction {
         }
     }
 
-    fn next_id(id: usize, rng: &mut SmallRng, nex: &NexmarkConfig) -> Id {
-        let max_auction = Self::last_id(id, nex);
+    fn next_id(event_id: usize, rng: &mut SmallRng, nex: &NexmarkConfig) -> Id {
+        let max_auction = Self::last_id(event_id, nex);
         let min_auction = if max_auction < nex.in_flight_auctions {
             0
         } else {
@@ -277,9 +272,9 @@ impl Auction {
         min_auction + rng.gen_range(0..max_auction - min_auction + 1 + nex.auction_id_lead)
     }
 
-    fn last_id(id: usize, nex: &NexmarkConfig) -> Id {
-        let mut epoch = id / nex.proportion_denominator;
-        let mut offset = id % nex.proportion_denominator;
+    fn last_id(event_id: usize, nex: &NexmarkConfig) -> Id {
+        let mut epoch = event_id / nex.proportion_denominator;
+        let mut offset = event_id % nex.proportion_denominator;
         if offset < nex.person_proportion {
             epoch -= 1;
             offset = nex.auction_proportion - 1;
@@ -327,16 +322,17 @@ pub struct Bid {
 }
 
 impl Bid {
-    fn new(id: usize, time: usize, rng: &mut SmallRng, nex: &NexmarkConfig) -> Self {
+    fn new(event_id: usize, time: usize, nex: &NexmarkConfig) -> Self {
+        let rng = &mut SmallRng::seed_from_u64(event_id as u64);
         let auction = if 0 < rng.gen_range(0..nex.hot_auction_ratio) {
-            (Auction::last_id(id, nex) / nex.hot_auction_ratio_2) * nex.hot_auction_ratio_2
+            (Auction::last_id(event_id, nex) / nex.hot_auction_ratio_2) * nex.hot_auction_ratio_2
         } else {
-            Auction::next_id(id, rng, nex)
+            Auction::next_id(event_id, rng, nex)
         };
         let bidder = if 0 < rng.gen_range(0..nex.hot_bidder_ratio) {
-            (Person::last_id(id, nex) / nex.hot_bidder_ratio_2) * nex.hot_bidder_ratio_2 + 1
+            (Person::last_id(event_id, nex) / nex.hot_bidder_ratio_2) * nex.hot_bidder_ratio_2 + 1
         } else {
-            Person::next_id(id, rng, nex)
+            Person::next_id(event_id, rng, nex)
         };
 
         let price = rng.gen_price();
