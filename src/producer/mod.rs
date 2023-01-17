@@ -19,7 +19,7 @@ const RETRY_MAX_INTERVAL_US: u64 = 1000000;
 pub struct KafkaProducer {
     pub producer: ThreadedProducer<ProduceCallbackLogger>,
     env_config: Arc<EnvConfig>,
-    generator_num: usize,
+    partition_idx: Option<i32>,
     key: String,
 }
 
@@ -27,16 +27,22 @@ impl KafkaProducer {
     pub fn new(
         client_config: &ClientConfig,
         env_config: Arc<EnvConfig>,
+        generator_idx: usize,
         generator_num: usize,
     ) -> Self {
         let producer: ThreadedProducer<ProduceCallbackLogger> = client_config
             .create_with_context(ProduceCallbackLogger {})
             .expect("Failed to create kafka producer");
-        let key = format!("event-{}", generator_num);
+        let key = format!("event-{}", generator_idx);
+        let partition_idx = if generator_num as i32 % env_config.num_partitions == 0 {
+            Some(generator_idx as i32 % env_config.num_partitions)
+        } else {
+            None
+        };
         Self {
             producer,
             env_config,
-            generator_num,
+            partition_idx,
             key,
         }
     }
@@ -44,12 +50,15 @@ impl KafkaProducer {
     pub async fn send_data_to_topic(&self, data: &String, topic: &str) -> Result<()> {
         let mut timeout_us = RETRY_BASE_INTERVAL_US;
         while timeout_us <= RETRY_MAX_INTERVAL_US {
-            let res = self.producer.send(
+            let record = if let Some(partition) = self.partition_idx {
                 BaseRecord::<std::string::String, std::string::String>::to(topic)
                     .key(&self.key)
-                    .partition(self.choose_partition())
-                    .payload(data),
-            );
+                    .partition(partition)
+                    .payload(data)
+            } else {
+                BaseRecord::<std::string::String, std::string::String>::to(topic).payload(data)
+            };
+            let res = self.producer.send(record);
 
             if let Err((e, _)) = res {
                 if let KafkaError::MessageProduction(RDKafkaError::QueueFull) = e {
@@ -68,10 +77,6 @@ impl KafkaProducer {
             }
         }
         Err(anyhow!("send_data_to_topic Timeout"))
-    }
-
-    fn choose_partition(&self) -> i32 {
-        self.generator_num as i32 % self.env_config.num_partitions
     }
 
     pub fn choose_topic(&self, data: &Event) -> &str {

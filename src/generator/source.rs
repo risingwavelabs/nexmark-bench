@@ -39,15 +39,16 @@ impl NexmarkSource {
         dotenv().ok();
         let env_config = Arc::new(NexmarkSource::load_env());
         info!("Kafka address: {:?}", env_config.kafka_host);
-        if env_config.num_partitions > nexmark_config.num_event_generators as i32 {
-            panic!(
-                "Currently the number of partition must be equal to or smaller than the number of generators, num of partitions:{}, num of generators:{}",
-                env_config.num_partitions, nexmark_config.num_event_generators
-            );
-        }
         let client_config = NexmarkSource::generate_client_config(&env_config.kafka_host);
         let producers: Vec<KafkaProducer> = (0..nexmark_config.num_event_generators)
-            .map(|i| KafkaProducer::new(&client_config, Arc::clone(&env_config), i))
+            .map(|i| {
+                KafkaProducer::new(
+                    &client_config,
+                    Arc::clone(&env_config),
+                    i,
+                    nexmark_config.num_event_generators,
+                )
+            })
             .collect();
         Self {
             producers,
