@@ -115,13 +115,17 @@ pub struct NexmarkConfig {
 }
 
 impl NexmarkConfig {
-    pub fn from(properties: NexmarkProperties) -> anyhow::Result<Self> {
+    pub fn from(properties: NexmarkProperties, amplify_factor: usize) -> anyhow::Result<Self> {
         let active_people = properties.active_people.unwrap_or(1000);
         let in_flight_auctions = properties.in_flight_auctions.unwrap_or(100);
         let out_of_order_group_size = properties.out_of_order_group_size.unwrap_or(1);
-        let avg_person_byte_size = properties.avg_person_byte_size.unwrap_or(200);
-        let avg_auction_byte_size = properties.avg_auction_byte_size.unwrap_or(500);
-        let avg_bid_byte_size = properties.avg_bid_byte_size.unwrap_or(100);
+        let avg_person_byte_size = properties
+            .avg_person_byte_size
+            .unwrap_or(200 * amplify_factor);
+        let avg_auction_byte_size = properties
+            .avg_auction_byte_size
+            .unwrap_or(500 * amplify_factor);
+        let avg_bid_byte_size = properties.avg_bid_byte_size.unwrap_or(100 * amplify_factor);
         let hot_seller_ratio = properties.hot_seller_ratio.unwrap_or(4);
         let hot_auction_ratio = properties.hot_auction_ratio.unwrap_or(2);
         let hot_bidder_ratio = properties.hot_bidder_ratio.unwrap_or(4);
