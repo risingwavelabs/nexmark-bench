@@ -52,6 +52,7 @@ pub async fn run_generators(
         wallclock_base_time,
         server_config.num_event_generators as u64,
         server_config.skip_event_types,
+        server_config.amplify_factor,
     );
 
     for generator_idx in 0..server_config.num_event_generators {
@@ -60,8 +61,33 @@ pub async fn run_generators(
         let source = nexmark_source.clone();
         let atomic_interval_supplied = nexmark_interval.clone();
 
+        let geenrator_delay = server_config.delay / server_config.num_event_generators as u64
+            + if (generator_idx as u64)
+                < (server_config.delay % server_config.num_event_generators as u64)
+            {
+                1
+            } else {
+                0
+            };
+
+        let geenrator_delay_interval = server_config.delay_interval
+            / server_config.num_event_generators as u64
+            + if (generator_idx as u64)
+                < (server_config.delay_interval % server_config.num_event_generators as u64)
+            {
+                1
+            } else {
+                0
+            };
+
         let handler = tokio::spawn(async move {
-            let mut generator = NexmarkGenerator::new(generator_config, generator_idx as u64);
+            let mut generator = NexmarkGenerator::new(
+                generator_config,
+                generator_idx as u64,
+                geenrator_delay,
+                geenrator_delay_interval,
+                server_config.delay_proportion,
+            );
             let mut interval = time::interval(time::Duration::from_micros(
                 atomic_interval_supplied
                     .microseconds

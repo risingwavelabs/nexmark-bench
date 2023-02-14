@@ -18,9 +18,10 @@ impl GeneratorConfig {
         base_time: u64,
         generator_num: u64,
         skip_event_types: String,
+        amplify_factor: usize,
     ) -> Self {
         let properties = NexmarkProperties::default();
-        let config = NexmarkConfig::from(properties).unwrap();
+        let config = NexmarkConfig::from(properties, amplify_factor).unwrap();
         let max_events = match max_events {
             0 => u64::MAX,
             _ => max_events,

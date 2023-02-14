@@ -21,8 +21,24 @@ pub struct ServerConfig {
     #[clap(long, default_value = "")]
     pub skip_event_types: String,
 
+    /// If yes, only create topics(if there are topics with the same names, first delete them).
+    /// If no, the nexmark-server run assuming the topics already exist.
     #[clap(long, short, action)]
     pub create_topic: bool,
+
+    #[clap(long, default_value = "0")]
+    pub delay: u64,
+
+    /// must be smaller than delay
+    #[clap(long, default_value = "0")]
+    pub delay_interval: u64,
+
+    /// range: [0.0, 1.0), 0 means no delay. 
+    #[clap(long, default_value = "0")]
+    pub delay_proportion: f64,
+
+    #[clap(long, default_value = "1")]
+    pub amplify_factor: usize,
 }
 
 impl Default for ServerConfig {
@@ -34,6 +50,10 @@ impl Default for ServerConfig {
             num_event_generators: 3,
             skip_event_types: String::from(""),
             listen_port: 8000,
+            delay: 0,
+            delay_interval: 0,
+            amplify_factor: 1,
+            delay_proportion: 0.0,
         }
     }
 }

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use dotenv::dotenv;
 use log::info;
 use rdkafka::admin::{AdminClient, AdminOptions, NewTopic};
@@ -34,11 +34,25 @@ pub struct EnvConfig {
     pub person_topic: String,
 }
 
+impl Default for EnvConfig {
+    fn default() -> Self {
+        EnvConfig {
+            kafka_host: "localhost:9092".to_string(),
+            num_partitions: 3,
+            separate_topics: true,
+            base_topic: "nexmark-events".to_string(),
+            auction_topic: "nexmark-auction".to_string(),
+            bid_topic: "nexmark-bid".to_string(),
+            person_topic: "nexmark-person".to_string(),
+        }
+    }
+}
+
 impl NexmarkSource {
     pub fn new(nexmark_config: &ServerConfig) -> Self {
         dotenv().ok();
         let env_config = Arc::new(NexmarkSource::load_env());
-        info!("Kafka address: {:?}", env_config.kafka_host);
+        info!("EnvConfig: {:?}", env_config);
         let client_config = NexmarkSource::generate_client_config(&env_config.kafka_host);
         let producers: Vec<KafkaProducer> = (0..nexmark_config.num_event_generators)
             .map(|i| {
@@ -74,12 +88,11 @@ impl NexmarkSource {
         dotenv().ok();
         match envy::from_env::<EnvConfig>() {
             Ok(config) => config,
-            Err(err) => panic!("{:?}", err),
+            Err(err) => panic!("Failed to load env config, {:?}", err),
         }
     }
 
-    async fn delete_topics<T: ClientContext>(&self, admin_client: &AdminClient<T>) {
-        info!("Cleaning up...");
+    async fn delete_topics<T: ClientContext>(&self, admin_client: &AdminClient<T>) -> Result<()> {
         admin_client
             .delete_topics(
                 &[
@@ -90,58 +103,63 @@ impl NexmarkSource {
                 ],
                 &AdminOptions::new(),
             )
-            .await
-            .unwrap();
+            .await?;
         tokio::time::sleep(Duration::from_secs(3)).await;
+        Ok(())
     }
 
-    pub async fn create_topic(&self) {
-        let admin_client = AdminClient::from_config(&self.client_config).unwrap();
-        self.delete_topics(&admin_client).await;
-        info!("Creating...");
+    pub async fn create_topic(&self) -> Result<()> {
+        let admin_client = AdminClient::from_config(&self.client_config)
+            .map_err(|e| anyhow!("Failed to create kafka admin_client: {}", e))?;
+        info!("Cleaning up old topics...");
+        self.delete_topics(&admin_client).await?;
+        info!("Creating new topics...");
         match self.env_config.separate_topics {
-            true => admin_client
-                .create_topics(
-                    vec![
-                        &NewTopic::new(
-                            &self.env_config.person_topic,
+            true => {
+                admin_client
+                    .create_topics(
+                        vec![
+                            &NewTopic::new(
+                                &self.env_config.person_topic,
+                                self.env_config.num_partitions,
+                                rdkafka::admin::TopicReplication::Fixed(REPLICATION_FACTOR),
+                            ),
+                            &NewTopic::new(
+                                &self.env_config.auction_topic,
+                                self.env_config.num_partitions,
+                                rdkafka::admin::TopicReplication::Fixed(REPLICATION_FACTOR),
+                            ),
+                            &NewTopic::new(
+                                &self.env_config.bid_topic,
+                                self.env_config.num_partitions,
+                                rdkafka::admin::TopicReplication::Fixed(REPLICATION_FACTOR),
+                            ),
+                        ],
+                        &AdminOptions::new(),
+                    )
+                    .await?
+            }
+            false => {
+                admin_client
+                    .create_topics(
+                        vec![&NewTopic::new(
+                            &self.env_config.base_topic,
                             self.env_config.num_partitions,
                             rdkafka::admin::TopicReplication::Fixed(REPLICATION_FACTOR),
-                        ),
-                        &NewTopic::new(
-                            &self.env_config.auction_topic,
-                            self.env_config.num_partitions,
-                            rdkafka::admin::TopicReplication::Fixed(REPLICATION_FACTOR),
-                        ),
-                        &NewTopic::new(
-                            &self.env_config.bid_topic,
-                            self.env_config.num_partitions,
-                            rdkafka::admin::TopicReplication::Fixed(REPLICATION_FACTOR),
-                        ),
-                    ],
-                    &AdminOptions::new(),
-                )
-                .await
-                .unwrap(),
-            false => admin_client
-                .create_topics(
-                    vec![&NewTopic::new(
-                        &self.env_config.base_topic,
-                        self.env_config.num_partitions,
-                        rdkafka::admin::TopicReplication::Fixed(REPLICATION_FACTOR),
-                    )],
-                    &AdminOptions::new(),
-                )
-                .await
-                .unwrap(),
+                        )],
+                        &AdminOptions::new(),
+                    )
+                    .await?
+            }
         };
+        Ok(())
     }
 
     pub async fn check_topic_exist(&self) -> Result<()> {
         let consumer: BaseConsumer = self
             .client_config
             .create_with_context(DefaultConsumerContext)
-            .unwrap();
+            .map_err(|e| anyhow!("Failed to create kafka consumer: {}", e))?;
         if self.env_config.separate_topics {
             consumer.fetch_metadata(
                 Some(self.env_config.person_topic.as_str()),
