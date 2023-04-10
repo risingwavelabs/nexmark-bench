@@ -33,9 +33,17 @@ pub struct ServerConfig {
     #[clap(long, default_value = "0")]
     pub delay_interval: u64,
 
-    /// range: [0.0, 1.0), 0 means no delay. 
+    /// range: [0.0, 1.0), 0 means no delay.
     #[clap(long, default_value = "0")]
     pub delay_proportion: f64,
+
+    /// "uniform" or "zipf"
+    #[clap(long, default_value = "uniform")]
+    pub delay_pattern: String,
+
+    /// "uniform" or "zipf"
+    #[clap(long, default_value = "1.5")]
+    pub zipf_alpha: f64,
 
     #[clap(long, default_value = "1")]
     pub amplify_factor: usize,
@@ -52,6 +60,8 @@ impl Default for ServerConfig {
             listen_port: 8000,
             delay: 0,
             delay_interval: 0,
+            delay_pattern: String::from("uniform"),
+            zipf_alpha: 1.5,
             amplify_factor: 1,
             delay_proportion: 0.0,
         }

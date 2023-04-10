@@ -61,7 +61,7 @@ pub async fn run_generators(
         let source = nexmark_source.clone();
         let atomic_interval_supplied = nexmark_interval.clone();
 
-        let geenrator_delay = server_config.delay / server_config.num_event_generators as u64
+        let generator_delay = server_config.delay / server_config.num_event_generators as u64
             + if (generator_idx as u64)
                 < (server_config.delay % server_config.num_event_generators as u64)
             {
@@ -70,7 +70,7 @@ pub async fn run_generators(
                 0
             };
 
-        let geenrator_delay_interval = server_config.delay_interval
+        let generator_delay_interval = server_config.delay_interval
             / server_config.num_event_generators as u64
             + if (generator_idx as u64)
                 < (server_config.delay_interval % server_config.num_event_generators as u64)
@@ -79,14 +79,16 @@ pub async fn run_generators(
             } else {
                 0
             };
-
+        let pattern = server_config.delay_pattern.clone();
         let handler = tokio::spawn(async move {
             let mut generator = NexmarkGenerator::new(
                 generator_config,
                 generator_idx as u64,
-                geenrator_delay,
-                geenrator_delay_interval,
+                generator_delay,
+                generator_delay_interval,
                 server_config.delay_proportion,
+                pattern.as_str(),
+                server_config.zipf_alpha,
             );
             let mut interval = time::interval(time::Duration::from_micros(
                 atomic_interval_supplied
