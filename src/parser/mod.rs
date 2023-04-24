@@ -33,7 +33,10 @@ pub struct ServerConfig {
     #[clap(long, default_value = "0")]
     pub delay_interval: u64,
 
-    /// range: [0.0, 1.0), 0 means no delay. 
+    #[clap(long, short, action)]
+    pub delay_unbounded: bool,
+
+    /// range: [0.0, 1.0), 0 means no delay.
     #[clap(long, default_value = "0")]
     pub delay_proportion: f64,
 
@@ -52,6 +55,7 @@ impl Default for ServerConfig {
             listen_port: 8000,
             delay: 0,
             delay_interval: 0,
+            delay_unbounded: true,
             amplify_factor: 1,
             delay_proportion: 0.0,
         }

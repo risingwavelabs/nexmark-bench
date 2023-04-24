@@ -16,6 +16,7 @@ pub struct NexmarkGenerator {
     delay: u64,
     delay_interval: u64,
     delay_proportion: f64,
+    delay_unbounded: bool,
     rng: SmallRng,
 }
 
@@ -26,6 +27,7 @@ impl NexmarkGenerator {
         delay: u64,
         delay_interval: u64,
         delay_proportion: f64,
+        delay_unbounded: bool,
     ) -> Self {
         assert!(delay_interval <= delay);
         let local_events_so_far = 0;
@@ -37,6 +39,7 @@ impl NexmarkGenerator {
             delay,
             delay_interval,
             delay_proportion,
+            delay_unbounded,
             rng,
         }
     }
@@ -52,20 +55,23 @@ impl NexmarkGenerator {
 
             let seed: f64 = self.rng.gen_range(0.0..1.0);
 
-            if self.local_events_so_far == self.delay {
+            if self.local_events_so_far == self.delay && !self.delay_unbounded {
                 info!(
                     "{}th generator reaches delay point; {}",
                     self.index, self.delay
                 );
             }
             let mut delayed = false;
-            if self.delay > 0
-                && seed < self.delay_proportion
-                && self.local_events_so_far > self.delay
-            {
-                delayed = true;
-                let delay_interval = self.rng.gen_range(0..=self.delay_interval);
-                new_event_id -= (self.delay - delay_interval) * self.config.generator_num;
+
+            if seed < self.delay_proportion {
+                if self.delay_unbounded {
+                    delayed = true;
+                    new_event_id -= self.rng.gen_range(0..=new_event_id);
+                } else if self.delay > 0 && self.local_events_so_far > self.delay {
+                    delayed = true;
+                    let delay_interval = self.rng.gen_range(0..=self.delay_interval);
+                    new_event_id -= (self.delay - delay_interval) * self.config.generator_num;
+                }
             }
 
             if let Some((event, _)) = Event::new(

@@ -87,6 +87,7 @@ pub async fn run_generators(
                 geenrator_delay,
                 geenrator_delay_interval,
                 server_config.delay_proportion,
+                server_config.delay_unbounded,
             );
             let mut interval = time::interval(time::Duration::from_micros(
                 atomic_interval_supplied
