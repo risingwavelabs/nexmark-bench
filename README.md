@@ -132,6 +132,9 @@ and the `auction` event next as reading from each Kafka topic is independent.
 This can mess up the causality and also the temporal locality of the workload, which leads to much worse performance that does not
 happen in reality. The number of partitions in this Kafka topic is usually set to the same number as the `parallelism` of the system.
 
+### Benchmark by Risingwave
+Please check the directory [risingwave](./risingwave)
+
 
 ## Acknowledgement
 We have referred to [NEXMark research paper](https://web.archive.org/web/20100620010601/http://datalab.cs.pdx.edu/niagaraST/NEXMark/) 
