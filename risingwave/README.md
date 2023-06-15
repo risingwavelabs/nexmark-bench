@@ -41,3 +41,6 @@ After all the data have been generated into Kafka, we:
 - `create_views.sql`
 - pick the query you want to run from `create_sinks.sql`
 - `drop_views.sql`, then `drop_sinks.sql`, and finally `drop_source.sql` to clean up
+
+### Remarks
+Please make sure that the parallelism of the streaming job is equal to the number of partitions of the Kafka topic that Risingwave is reading from.
