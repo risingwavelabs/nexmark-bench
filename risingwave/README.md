@@ -1,8 +1,9 @@
 # Overview
 
-The following may constantly change. Please take note of the latest time that any changes happen.
-If it is somehow old and you cannot be sure if the following comments are up-to-date. 
-Please feel free to raise any question in Risingwave's Slack community or raise an issue.
+The following content may constantly change. Please take note of the latest time that any changes happen to this folder.
+If the date is somehow old and you cannot be sure if the following comments are up-to-date,
+please feel free to raise any question in Risingwave's Slack community or create an issue on GitHub.
+
 Thank you!
 
 This folder has a number of files that include Risingwave's SQL for benchmarking by Nexmark. Suppose we have already
