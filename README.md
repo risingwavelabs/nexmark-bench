@@ -114,10 +114,10 @@ Error in sending event Bid(Bid { auction: 24600, bidder: 8801, price: 2503825, c
 An error like this indicates that the local kafka producer's buffer is full, since events cannot be sent to kafka quickly enough. 
 Increasing the number of generators `--num-event-generators` should fix the issue.
 
-## Benchmarks
+## Benchmark the data generator
 Run ```cargo bench``` to get benchmarks for different qps, event generators and event sizes. Feel free to add more benchmarks as needed.
 
-### Remarks
+## Remarks about generating data to benchmark stream processing systems
 For benchmarking purpose, we **recommend** generating all the data to Kafka in advance before starting a system
 to process them. We want to have enough data to saturate the system. It is possible that the system processes even faster than the throughput
 of data being ingested into Kafka. Without having all the data in advance, we may measure the performance of kafka or the data
@@ -132,8 +132,8 @@ and the `auction` event next as reading from each Kafka topic is independent.
 This can mess up the causality and also the temporal locality of the workload, which leads to much worse performance that does not
 happen in reality. The number of partitions in this Kafka topic is usually set to the same number as the `parallelism` of the system.
 
-### Benchmark by Risingwave
-Please check the directory [risingwave](./risingwave)
+## Use `nexmark-bench` to benchmark Risingwave
+Please check [risingwave](./risingwave)
 
 
 ## Acknowledgement
