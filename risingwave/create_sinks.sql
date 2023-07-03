@@ -176,6 +176,13 @@ CREATE SINK nexmark_q10 AS
     WITH ( connector = 'blackhole', type = 'append-only');
 
 
+CREATE SINK nexmark_q12 AS
+    SELECT bidder, count(*) as bid_count, window_start, window_end
+    FROM TUMBLE(bid, p_time, INTERVAL '10' SECOND)
+    GROUP BY bidder, window_start, window_end
+    WITH ( connector = 'blackhole', type = 'append-only', force_append_only = 'true');
+
+
 CREATE SINK nexmark_q14 AS
     SELECT auction,
            bidder,
@@ -267,6 +274,16 @@ CREATE SINK nexmark_q18 AS
     WHERE rank_number <= 1
     WITH ( connector = 'blackhole', type = 'append-only', force_append_only = 'true');
 
+CREATE SINK nexmark_q19 AS
+    SELECT auction, bidder, price, channel, url, date_time, extra
+    FROM (SELECT *,
+                 ROW_NUMBER() OVER (
+                     PARTITION BY auction
+                     ORDER BY price DESC
+                 ) AS rank_number
+          FROM bid)
+    WHERE rank_number <= 10
+    WITH ( connector = 'blackhole', type = 'append-only', force_append_only = 'true');
 
 CREATE SINK nexmark_q20 AS
     SELECT auction,
