@@ -24,7 +24,8 @@ CREATE SOURCE nexmark (
             "channel" VARCHAR,
             "url" VARCHAR,
             "date_time" TIMESTAMP,
-            "extra" VARCHAR>
+            "extra" VARCHAR>,
+  p_time TIMESTAMPTZ as proctime()
 ) WITH (
   connector = 'kafka',
   topic = 'nexmark-events',
