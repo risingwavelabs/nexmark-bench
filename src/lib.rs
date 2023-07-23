@@ -53,6 +53,7 @@ pub async fn run_generators(
         server_config.num_event_generators as u64,
         server_config.skip_event_types,
         server_config.amplify_factor,
+        server_config.event_rate_factor,
     );
 
     for generator_idx in 0..server_config.num_event_generators {
