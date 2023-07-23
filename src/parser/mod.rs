@@ -47,6 +47,9 @@ pub struct ServerConfig {
 
     #[clap(long, default_value = "1")]
     pub amplify_factor: usize,
+
+    #[clap(long, default_value = "1")]
+    pub event_rate_factor: usize,
 }
 
 impl Default for ServerConfig {
@@ -63,6 +66,7 @@ impl Default for ServerConfig {
             delay_pattern: String::from("uniform"),
             zipf_alpha: 1.5,
             amplify_factor: 1,
+            event_rate_factor: 1,
             delay_proportion: 0.0,
         }
     }

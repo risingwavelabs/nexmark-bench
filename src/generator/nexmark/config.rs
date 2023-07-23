@@ -115,7 +115,11 @@ pub struct NexmarkConfig {
 }
 
 impl NexmarkConfig {
-    pub fn from(properties: NexmarkProperties, amplify_factor: usize) -> anyhow::Result<Self> {
+    pub fn from(
+        properties: NexmarkProperties,
+        amplify_factor: usize,
+        event_rate_factor: usize,
+    ) -> anyhow::Result<Self> {
         let active_people = properties.active_people.unwrap_or(1000);
         let in_flight_auctions = properties.in_flight_auctions.unwrap_or(100);
         let out_of_order_group_size = properties.out_of_order_group_size.unwrap_or(1);
@@ -170,7 +174,9 @@ impl NexmarkConfig {
             RateShape::Square
         };
         let rate_period = properties.rate_period.unwrap_or(600);
-        let first_rate = properties.first_event_rate.unwrap_or(10_000);
+        let first_rate = properties
+            .first_event_rate
+            .unwrap_or(10_000 * event_rate_factor);
         let next_rate = properties.next_event_rate.unwrap_or(first_rate);
         let us_per_unit = properties.us_per_unit.unwrap_or(1_000_000); // Rate is in μs
         let generators = properties.threads.unwrap_or(1) as f32;
