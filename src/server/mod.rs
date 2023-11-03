@@ -26,5 +26,5 @@ pub fn qps(
         ),
         Ordering::Relaxed,
     );
-    status::Accepted(Some(format!("qps: {}", qps_handler.qps)))
+    status::Accepted(format!("qps: {}", qps_handler.qps))
 }
