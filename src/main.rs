@@ -16,7 +16,7 @@ use nexmark_server::server::qps;
 use nexmark_server::NexmarkInterval;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     let running = Arc::new(AtomicBool::new(true));
@@ -43,7 +43,7 @@ async fn main() {
                 port: conf.listen_port,
                 ..Default::default()
             };
-            nexmark_source.check_topic_exist().await.unwrap();
+            nexmark_source.check_topic_exist().await?;
             let rocket = rocket::custom(&config)
                 .manage(Arc::clone(&interval))
                 .manage(conf.clone())
@@ -57,4 +57,6 @@ async fn main() {
             shutdown_handle.notify();
         }
     }
+
+    Ok(())
 }

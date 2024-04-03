@@ -142,24 +142,26 @@ impl NexmarkSource {
             .client_config
             .create_with_context(DefaultConsumerContext)
             .unwrap();
+
+        let check = |topic: &str| {
+            let metadata = consumer.fetch_metadata(Some(topic), KAFKA_GET_METADATA_TIMEOUT)?;
+            let topic_meta = match metadata.topics() {
+                [meta] => meta,
+                _ => return Err(anyhow::anyhow!("topic {} not found", topic)),
+            };
+
+            if topic_meta.partitions().is_empty() {
+                return Err(anyhow::anyhow!("topic {} not found", topic));
+            }
+            Ok(())
+        };
+
         if self.env_config.separate_topics {
-            consumer.fetch_metadata(
-                Some(self.env_config.person_topic.as_str()),
-                KAFKA_GET_METADATA_TIMEOUT,
-            )?;
-            consumer.fetch_metadata(
-                Some(self.env_config.auction_topic.as_str()),
-                KAFKA_GET_METADATA_TIMEOUT,
-            )?;
-            consumer.fetch_metadata(
-                Some(self.env_config.bid_topic.as_str()),
-                KAFKA_GET_METADATA_TIMEOUT,
-            )?;
+            check(self.env_config.person_topic.as_str())?;
+            check(self.env_config.auction_topic.as_str())?;
+            check(self.env_config.bid_topic.as_str())?;
         } else {
-            consumer.fetch_metadata(
-                Some(self.env_config.base_topic.as_str()),
-                KAFKA_GET_METADATA_TIMEOUT,
-            )?;
+            check(self.env_config.base_topic.as_str())?;
         }
         Ok(())
     }
