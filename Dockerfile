@@ -1,22 +1,20 @@
-FROM rust AS planner 
+FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 WORKDIR /nexmark-server
-RUN cargo install cargo-chef 
+COPY rust-toolchain rust-toolchain
+RUN rustup show
+RUN rustup default `rustup show active-toolchain | awk '{print $1}'`
+
+FROM chef AS planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
-FROM rust AS cacher 
-WORKDIR /nexmark-server
-RUN cargo install cargo-chef
+FROM chef AS builder
+RUN apt-get update && apt-get -y install cmake protobuf-compiler
 COPY --from=planner /nexmark-server/recipe.json recipe.json
-RUN apt-get update && apt-get -y install cmake protobuf-compiler
-RUN cargo chef cook --recipe-path recipe.json
-
-FROM rust:latest AS builder
-COPY . ./nexmark-server
-WORKDIR /nexmark-server
-COPY --from=cacher /nexmark-server/target target
-COPY --from=cacher /usr/local/cargo /usr/local/cargo
-RUN apt-get update && apt-get -y install cmake protobuf-compiler
+# Build dependencies - this is the caching Docker layer!
+RUN cargo chef cook --release --recipe-path recipe.json
+# Build application
+COPY . .
 RUN cargo install --path .
 
 FROM ubuntu:22.04 as nexmark-bench
