@@ -1,22 +1,12 @@
-FROM rust AS planner 
+FROM rust AS builder
+RUN apt-get update && apt-get -y install cmake protobuf-compiler
+
 WORKDIR /nexmark-server
-RUN cargo install cargo-chef 
+COPY rust-toolchain rust-toolchain
+RUN rustup show
+RUN rustup default `rustup show active-toolchain | awk '{print $1}'`
+
 COPY . .
-RUN cargo chef prepare --recipe-path recipe.json
-
-FROM rust AS cacher 
-WORKDIR /nexmark-server
-RUN cargo install cargo-chef
-COPY --from=planner /nexmark-server/recipe.json recipe.json
-RUN apt-get update && apt-get -y install cmake protobuf-compiler
-RUN cargo chef cook --recipe-path recipe.json
-
-FROM rust:latest AS builder
-COPY . ./nexmark-server
-WORKDIR /nexmark-server
-COPY --from=cacher /nexmark-server/target target
-COPY --from=cacher /usr/local/cargo /usr/local/cargo
-RUN apt-get update && apt-get -y install cmake protobuf-compiler
 RUN cargo install --path .
 
 FROM ubuntu:22.04 as nexmark-bench
