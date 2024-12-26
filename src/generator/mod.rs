@@ -3,6 +3,7 @@ use crate::generator::nexmark::event::Event;
 
 pub mod config;
 pub mod nexmark;
+pub mod otlp;
 pub mod source;
 
 pub struct NexmarkGenerator {
